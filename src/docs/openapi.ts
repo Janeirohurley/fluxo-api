@@ -1167,6 +1167,15 @@ export function createOpenApiDocument() {
                 keyPrefix: { type: 'string', example: 'flx_live_123456' },
                 label: { type: 'string', nullable: true },
                 expiresAt: { type: 'string', nullable: true, format: 'date-time' },
+                company: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    slug: { type: 'string', example: 'kithub' },
+                    name: { type: 'string', example: 'Kithub' }
+                  }
+                },
                 plan: {
                   type: 'object',
                   properties: {
@@ -1266,6 +1275,15 @@ export function createOpenApiDocument() {
             companyContext: {
               type: 'object',
               properties: {
+                company: {
+                  nullable: true,
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    slug: { type: 'string' },
+                    name: { type: 'string' }
+                  }
+                },
                 accessKey: {
                   type: 'object',
                   properties: {

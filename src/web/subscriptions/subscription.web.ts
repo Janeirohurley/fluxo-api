@@ -3,8 +3,17 @@ import { type PrismaClient } from '@prisma/client';
 
 import { HttpError } from '../../shared/http-error';
 import { SubscriptionService } from './subscription.service';
-import { adminDecisionSchema, createSubscriptionRequestSchema } from './subscription.schema';
-import { renderAdminPage, renderApprovalResultPage, renderPortalPage } from './subscription.templates';
+import {
+  adminDecisionSchema,
+  createSubscriptionRequestSchema,
+  updateSubscriptionModulesSchema
+} from './subscription.schema';
+import {
+  renderAdminPage,
+  renderApprovalResultPage,
+  renderEditSubscriptionPage,
+  renderPortalPage
+} from './subscription.templates';
 
 function readAdminToken(req: Request) {
   const queryToken = typeof req.query.token === 'string' ? req.query.token : null;
@@ -111,17 +120,43 @@ export function createSubscriptionWebRouter(prisma: PrismaClient) {
     try {
       const token = assertAdminToken(req);
       const requests = await subscriptionService.listRequests();
+      const message = typeof req.query.message === 'string' ? req.query.message : null;
+      const errorMessage = typeof req.query.error === 'string' ? req.query.error : null;
 
       res.status(200).send(
         renderAdminPage({
           token,
-          requests
+          requests,
+          message,
+          errorMessage
         })
       );
     } catch (error) {
       next(error);
     }
   });
+
+  router.get(
+    '/admin/subscriptions/:id/edit',
+    async (req: Request<{ id: string }>, res: Response, next) => {
+      try {
+        const token = assertAdminToken(req);
+        const editable = await subscriptionService.getEditableSubscription(req.params.id);
+
+        res.status(200).send(
+          renderEditSubscriptionPage({
+            token,
+            request: editable,
+            catalog: await subscriptionService.getPortalData().then((data) => data.modules),
+            message: typeof req.query.message === 'string' ? req.query.message : null,
+            errorMessage: typeof req.query.error === 'string' ? req.query.error : null
+          })
+        );
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 
   router.post(
     '/admin/subscriptions/:id/approve',
@@ -142,13 +177,109 @@ export function createSubscriptionWebRouter(prisma: PrismaClient) {
             modules: result.request.requestedModules,
             key: result.accessKey.plain,
             planName: result.plan.name,
+            companySlug: result.company.slug,
+            databaseName: result.database.name,
             emailSent: result.emailDelivery.sent,
             emailError: result.emailDelivery.sent ? null : result.emailDelivery.error,
-            adminMessage: result.request.adminMessage
+            adminMessage: result.request.adminMessage,
+            successMessage: 'Le retry a reussi. Une nouvelle cle a ete generee pour ce tenant.'
           })
         );
       } catch (error) {
-        next(error);
+        try {
+          const token = assertAdminToken(req);
+          const requests = await subscriptionService.listRequests();
+
+          res.status(409).send(
+            renderAdminPage({
+              token,
+              requests,
+              errorMessage:
+                error instanceof Error
+                  ? `Le retry a echoue: ${error.message}`
+                  : 'Le retry a echoue.'
+            })
+          );
+        } catch (renderError) {
+          next(renderError);
+        }
+      }
+    }
+  );
+
+  router.post(
+    '/admin/subscriptions/:id/modules',
+    async (req: Request<{ id: string }>, res: Response, next) => {
+      const token = assertAdminToken(req);
+
+      try {
+        const payload = updateSubscriptionModulesSchema.parse({
+          modules: normalizeModules(req.body.modules),
+          adminMessage: req.body.adminMessage
+        });
+
+        const result = await subscriptionService.updateSubscriptionModules(req.params.id, payload);
+        res.redirect(
+          `/admin/subscriptions?token=${encodeURIComponent(token)}&message=${encodeURIComponent(
+            `Modules mis a jour pour ${result.companyName}.`
+          )}`
+        );
+      } catch (error) {
+        try {
+          const editable = await subscriptionService.getEditableSubscription(req.params.id);
+
+          res.status(400).send(
+            renderEditSubscriptionPage({
+              token,
+              request: editable,
+              catalog: await subscriptionService.getPortalData().then((data) => data.modules),
+              errorMessage:
+                error instanceof Error
+                  ? `Impossible de mettre a jour les modules: ${error.message}`
+                  : 'Impossible de mettre a jour les modules.',
+              adminMessage: typeof req.body.adminMessage === 'string' ? req.body.adminMessage : null
+            })
+          );
+        } catch (renderError) {
+          next(renderError);
+        }
+      }
+    }
+  );
+
+  router.post(
+    '/admin/subscriptions/:id/resync',
+    async (req: Request<{ id: string }>, res: Response, next) => {
+      const token = assertAdminToken(req);
+
+      try {
+        const payload = adminDecisionSchema.parse({
+          adminMessage: req.body.adminMessage
+        });
+
+        const result = await subscriptionService.resyncSubscriptionTenant(req.params.id, payload);
+        res.redirect(
+          `/admin/subscriptions?token=${encodeURIComponent(token)}&message=${encodeURIComponent(
+            `Tenant resynchronise pour ${result.companyName}.`
+          )}`
+        );
+      } catch (error) {
+        try {
+          const requests = await subscriptionService.listRequests();
+
+          res.status(409).send(
+            renderAdminPage({
+              token,
+              requests,
+              errorMessage:
+                error instanceof Error
+                  ? `La resynchronisation a echoue: ${error.message}`
+                  : 'La resynchronisation a echoue.'
+            })
+          );
+        } catch (renderError) {
+          next(renderError);
+        }
       }
     }
   );
@@ -164,6 +295,38 @@ export function createSubscriptionWebRouter(prisma: PrismaClient) {
 
         await subscriptionService.rejectRequest(req.params.id, payload);
         res.redirect(`/admin/subscriptions?token=${encodeURIComponent(token)}`);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    '/admin/subscriptions/:id/retry',
+    async (req: Request<{ id: string }>, res: Response, next) => {
+      try {
+        const token = assertAdminToken(req);
+        const payload = adminDecisionSchema.parse({
+          adminMessage: req.body.adminMessage
+        });
+
+        const result = await subscriptionService.retryFailedRequest(req.params.id, payload);
+
+        res.status(200).send(
+          renderApprovalResultPage({
+            token,
+            companyName: result.request.companyName,
+            email: result.request.email,
+            modules: result.request.requestedModules,
+            key: result.accessKey.plain,
+            planName: result.plan.name,
+            companySlug: result.company.slug,
+            databaseName: result.database.name,
+            emailSent: result.emailDelivery.sent,
+            emailError: result.emailDelivery.sent ? null : result.emailDelivery.error,
+            adminMessage: result.request.adminMessage
+          })
+        );
       } catch (error) {
         next(error);
       }

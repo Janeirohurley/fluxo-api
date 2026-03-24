@@ -2,22 +2,26 @@ export const MODULE_CATALOG = [
   {
     code: 'assets',
     name: 'Assets',
-    description: 'Patrimoine, inventaire, maintenance, affectations et donnees financieres.'
+    description: 'Patrimoine, inventaire, maintenance, affectations et donnees financieres.',
+    availability: 'available'
   },
   {
     code: 'finance',
     name: 'Finance',
-    description: 'Entrees, sorties, rapprochements et suivi financier.'
+    description: 'Entrees, sorties, rapprochements et suivi financier.',
+    availability: 'coming_soon'
   },
   {
     code: 'employees',
     name: 'Employees',
-    description: 'Personnel, postes, roles et historique RH.'
+    description: 'Personnel, postes, roles et historique RH.',
+    availability: 'coming_soon'
   },
   {
     code: 'payroll',
     name: 'Payroll',
-    description: 'Contrats, bulletins et operations de paie.'
+    description: 'Contrats, bulletins et operations de paie.',
+    availability: 'coming_soon'
   }
 ] as const;
 

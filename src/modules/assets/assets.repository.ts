@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 
 import { HttpError } from '../../shared/http-error';
+import { type PrismaClientLike } from '../../shared/prisma';
 import {
   type CreateAssetAssignmentInput,
   type CreateAssetCategoryInput,
@@ -350,7 +351,18 @@ export class InMemoryAssetsRepository implements AssetsRepository {
 }
 
 export class PrismaAssetsRepository implements AssetsRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prismaResolver: PrismaClient | (() => PrismaClientLike | null)) {}
+
+  private get prisma() {
+    const prisma =
+      typeof this.prismaResolver === 'function' ? this.prismaResolver() : this.prismaResolver;
+
+    if (!prisma) {
+      throw new HttpError(503, 'Tenant database client is not available for assets');
+    }
+
+    return prisma;
+  }
 
   async listAssets(input: ListAssetsQuery): Promise<AssetListQueryResult> {
     const where = this.buildAssetWhereInput(input);

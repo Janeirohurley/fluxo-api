@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenantAuditActorType {
+  access_key
+  admin_token
+  anonymous
+  system
+}
+
+model AssetCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  assets    Asset[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+model AssetStatus {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  assets    Asset[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("statuses")
+}
+
+model InterventionType {
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique
+  maintenanceLogs MaintenanceLog[]
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@map("intervention_types")
+}
+
+model Asset {
+  id            String             @id @default(uuid()) @db.Uuid
+  inventoryCode String             @unique @map("inventory_code")
+  name          String
+  brand         String?
+  model         String?
+  serialNumber  String?            @map("serial_number")
+  categoryId    String             @db.Uuid @map("category_id")
+  statusId      String             @db.Uuid @map("status_id")
+  category      AssetCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  status        AssetStatus        @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  financeData   AssetFinanceData?
+  assignments   AssetAssignment[]
+  maintenance   MaintenanceLog[]
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@index([categoryId])
+  @@index([statusId])
+  @@map("assets")
+}
+
+model AssetFinanceData {
+  assetId            String   @id @db.Uuid @map("asset_id")
+  acquisitionDate    DateTime @map("acquisition_date") @db.Date
+  purchaseValue      Decimal  @map("purchase_value") @db.Decimal(15, 2)
+  estimatedLifeYears Int      @map("estimated_life_years")
+  residualValue      Decimal? @map("residual_value") @db.Decimal(15, 2)
+  asset              Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("finance_data")
+}
+
+model AssetAssignment {
+  id         String   @id @default(uuid()) @db.Uuid
+  assetId    String   @db.Uuid @map("asset_id")
+  employeeId String   @db.Uuid @map("employee_id")
+  locationId String   @db.Uuid @map("location_id")
+  startDate  DateTime @map("start_date") @db.Date
+  endDate    DateTime? @map("end_date") @db.Date
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([assetId])
+  @@index([employeeId])
+  @@index([locationId])
+  @@map("asset_assignments")
+}
+
+model MaintenanceLog {
+  id                 String           @id @default(uuid()) @db.Uuid
+  assetId            String           @db.Uuid @map("asset_id")
+  interventionTypeId String           @db.Uuid @map("intervention_type_id")
+  description        String?
+  interventionCost   Decimal?         @map("intervention_cost") @db.Decimal(15, 2)
+  provider           String?
+  asset              Asset            @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  interventionType   InterventionType @relation(fields: [interventionTypeId], references: [id], onDelete: Restrict)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  @@index([assetId])
+  @@index([interventionTypeId])
+  @@map("maintenance_logs")
+}
+
+model TenantAuditLog {
+  id           String               @id @default(uuid()) @db.Uuid
+  requestId    String?              @map("request_id")
+  actorType    TenantAuditActorType @map("actor_type")
+  actorId      String?              @map("actor_id")
+  actorLabel   String?              @map("actor_label")
+  moduleName   String?              @map("module_name")
+  action       String
+  method       String
+  path         String
+  resourceType String?              @map("resource_type")
+  resourceId   String?              @map("resource_id")
+  statusCode   Int                  @map("status_code")
+  metadata     Json?
+  beforeData   Json?                @map("before_data")
+  afterData    Json?                @map("after_data")
+  createdAt    DateTime             @default(now()) @map("created_at")
+
+  @@index([requestId])
+  @@index([actorType])
+  @@index([moduleName])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("tenant_audit_logs")
+}

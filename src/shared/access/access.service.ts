@@ -40,6 +40,7 @@ export class AccessService {
         keyHash
       },
       include: {
+        company: true,
         plan: {
           include: {
             modules: {
@@ -60,6 +61,10 @@ export class AccessService {
       throw new HttpError(403, 'The plan attached to this access key is inactive');
     }
 
+    if (accessKey.company && !accessKey.company.isActive) {
+      throw new HttpError(403, 'The company attached to this access key is inactive');
+    }
+
     if (accessKey.expiresAt && accessKey.expiresAt.getTime() < Date.now()) {
       throw new HttpError(403, 'This access key has expired');
     }
@@ -69,6 +74,13 @@ export class AccessService {
       keyPrefix: accessKey.keyPrefix,
       label: accessKey.label,
       expiresAt: accessKey.expiresAt?.toISOString() ?? null,
+      company: accessKey.company
+        ? {
+            id: accessKey.company.id,
+            slug: accessKey.company.slug,
+            name: accessKey.company.name
+          }
+        : null,
       plan: {
         id: accessKey.plan.id,
         code: accessKey.plan.code,

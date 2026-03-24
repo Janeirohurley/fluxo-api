@@ -41,6 +41,7 @@ async function main() {
       code: planCode
     },
     include: {
+      company: true,
       modules: {
         orderBy: {
           moduleName: 'asc'
@@ -61,6 +62,7 @@ async function main() {
       keyHash: hashAccessKey(accessKey),
       label,
       planId: plan.id,
+      companyId: plan.companyId ?? null,
       expiresAt: expiresAtRaw ? new Date(expiresAtRaw) : null
     }
   });
@@ -72,6 +74,12 @@ async function main() {
       code: plan.code,
       name: plan.name
     },
+    company: plan.company
+      ? {
+          slug: plan.company.slug,
+          name: plan.company.name
+        }
+      : null,
     modules: plan.modules.map((moduleAccess) => moduleAccess.moduleName),
     expiresAt: created.expiresAt?.toISOString() ?? null
   }, null, 2));

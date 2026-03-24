@@ -10,11 +10,12 @@
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:seed": "tsx prisma/seed.ts",
+    "tenant:sync": "tsx scripts/sync-tenant-schemas.ts",
     "db:backup": "tsx scripts/db-backup.ts",
     "db:restore": "tsx scripts/db-restore.ts",
     "access:plans": "tsx scripts/list-access-plans.ts",
     "access:key:generate": "tsx scripts/generate-access-key.ts",
-    "test": "node --import tsx --test src/shared/http/request-case.test.ts src/shared/http/response-case.test.ts src/shared/http/rate-limit.test.ts src/shared/observability/request-metrics.test.ts src/shared/pagination/pagination.test.ts src/modules/assets/assets.schema.test.ts src/modules/assets/assets.service.test.ts src/overview/providers/assets-overview.provider.test.ts src/overview/overview.service.test.ts"
+    "test": "node --import tsx --test src/shared/http/request-case.test.ts src/shared/http/response-case.test.ts src/shared/http/rate-limit.test.ts src/shared/observability/request-metrics.test.ts src/shared/pagination/pagination.test.ts src/shared/tenancy/tenant-provisioning.test.ts src/modules/assets/assets.schema.test.ts src/modules/assets/assets.service.test.ts src/overview/providers/assets-overview.provider.test.ts src/overview/overview.service.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -36,6 +37,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.6.1",
+    "@types/pg": "^8.15.5",
     "@types/swagger-ui-express": "^4.1.8",
     "prisma": "^7.5.0",
     "tsx": "^4.20.6",

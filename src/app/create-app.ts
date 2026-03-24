@@ -10,12 +10,14 @@ import { createModules } from '../modules';
 import { createOverviewRouter } from '../overview';
 import { AccessService, createGeneralAccessMiddleware, createModuleAccessMiddleware } from '../shared/access';
 import { AuditService } from '../shared/audit/audit.service';
+import { createTenantAuditMiddleware } from '../shared/audit/tenant-audit.middleware';
 import { replaceRequestSection, toCamelCaseRequest } from '../shared/http/request-case';
 import { createRateLimitMiddleware, InMemoryRateLimiter } from '../shared/http/rate-limit';
 import { toSnakeCaseResponse } from '../shared/http/response-case';
 import { HttpError } from '../shared/http-error';
 import { RequestMetricsStore } from '../shared/observability/request-metrics';
 import { prisma } from '../shared/prisma';
+import { createTenantMiddleware, TenantPrismaManager, TenantRoutingService } from '../shared/tenancy';
 import { createSubscriptionWebRouter } from '../web/subscriptions/subscription.web';
 
 export function createApp() {
@@ -27,6 +29,10 @@ export function createApp() {
   const openApiDocument = createOpenApiDocument();
   const accessService = prisma ? new AccessService(prisma) : null;
   const auditService = prisma ? new AuditService(prisma) : null;
+  const tenantRoutingService =
+    prisma && accessService
+      ? new TenantRoutingService(prisma, new TenantPrismaManager())
+      : null;
   const metricsStore = new RequestMetricsStore();
   const rateLimiter =
     process.env.RATE_LIMIT_ENABLED === 'false'
@@ -42,7 +48,7 @@ export function createApp() {
     requiresAccessKey,
     ...(name === 'assets' ? { docsPath: `${basePath}/docs` } : {})
   }));
-  app.locals.prisma = prisma;
+  app.locals.adminPrisma = prisma;
 
   app.use(
     helmet({
@@ -246,6 +252,7 @@ export function createApp() {
     app.use(
       '/api/overview',
       createGeneralAccessMiddleware(accessService),
+      ...(tenantRoutingService ? [createTenantMiddleware(tenantRoutingService)] : []),
       createOverviewRouter(modules.map((module) => module.name as 'assets' | 'finance' | 'employees' | 'payroll'))
     );
   }
@@ -267,7 +274,13 @@ export function createApp() {
         throw new Error(`Cannot protect module "${module.name}" because Prisma is not configured`);
       }
 
-      app.use(module.basePath, createModuleAccessMiddleware(accessService, module.name), module.router);
+      app.use(
+        module.basePath,
+        createModuleAccessMiddleware(accessService, module.name),
+        ...(tenantRoutingService ? [createTenantMiddleware(tenantRoutingService)] : []),
+        createTenantAuditMiddleware(),
+        module.router
+      );
       continue;
     }
 

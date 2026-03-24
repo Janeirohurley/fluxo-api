@@ -8,7 +8,9 @@ datasource db {
 
 enum SubscriptionRequestStatus {
   pending
+  provisioning
   approved
+  failed
   rejected
 }
 
@@ -19,18 +21,58 @@ enum AuditActorType {
   system
 }
 
+enum CompanyProvisioningStatus {
+  pending
+  provisioning
+  ready
+  failed
+}
+
+model Company {
+  id               String                @id @default(uuid()) @db.Uuid
+  slug             String                @unique
+  name             String
+  isActive         Boolean               @default(true) @map("is_active")
+  database         CompanyDatabase?
+  accessKeys       AccessKey[]
+  customPlans      AccessPlan[]          @relation("CompanyPlans")
+  approvedRequests SubscriptionRequest[] @relation("ApprovedCompany")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  @@map("companies")
+}
+
+model CompanyDatabase {
+  companyId           String                   @id @db.Uuid @map("company_id")
+  databaseName        String                   @unique @map("database_name")
+  connectionString    String                   @map("connection_string")
+  provisioningStatus  CompanyProvisioningStatus @default(pending) @map("provisioning_status")
+  provisionedAt       DateTime?                @map("provisioned_at")
+  lastProvisioningError String?                @map("last_provisioning_error")
+  company             Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  @@index([provisioningStatus])
+  @@map("company_databases")
+}
+
 model AccessPlan {
   id          String             @id @default(uuid()) @db.Uuid
   code        String             @unique
   name        String
   description String?
   isActive    Boolean            @default(true) @map("is_active")
+  companyId   String?            @db.Uuid @map("company_id")
+  company     Company?           @relation("CompanyPlans", fields: [companyId], references: [id], onDelete: SetNull)
   modules     AccessPlanModule[]
   accessKeys  AccessKey[]
   approvedRequests SubscriptionRequest[] @relation("ApprovedPlan")
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
 
+  @@index([companyId])
   @@map("access_plans")
 }
 
@@ -52,6 +94,8 @@ model AccessKey {
   label     String?
   planId    String     @db.Uuid @map("plan_id")
   plan      AccessPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  companyId String?    @db.Uuid @map("company_id")
+  company   Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
   isActive  Boolean    @default(true) @map("is_active")
   expiresAt DateTime?  @map("expires_at")
   lastUsedAt DateTime? @map("last_used_at")
@@ -60,6 +104,7 @@ model AccessKey {
   updatedAt DateTime   @updatedAt @map("updated_at")
 
   @@index([planId])
+  @@index([companyId])
   @@index([isActive])
   @@map("access_keys")
 }
@@ -73,6 +118,8 @@ model SubscriptionRequest {
   requestedModules    SubscriptionRequestModule[]
   approvedPlanId      String?                   @db.Uuid @map("approved_plan_id")
   approvedPlan        AccessPlan?               @relation("ApprovedPlan", fields: [approvedPlanId], references: [id], onDelete: SetNull)
+  approvedCompanyId   String?                   @db.Uuid @map("approved_company_id")
+  approvedCompany     Company?                  @relation("ApprovedCompany", fields: [approvedCompanyId], references: [id], onDelete: SetNull)
   approvedAccessKeyId String?                   @db.Uuid @map("approved_access_key_id")
   approvedAccessKey   AccessKey?                @relation("ApprovedAccessKey", fields: [approvedAccessKeyId], references: [id], onDelete: SetNull)
   adminMessage        String?                   @map("admin_message")
@@ -84,6 +131,7 @@ model SubscriptionRequest {
 
   @@index([status])
   @@index([email])
+  @@index([approvedCompanyId])
   @@map("subscription_requests")
 }
 
