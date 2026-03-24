@@ -3,11 +3,12 @@ import { InMemoryFinanceRepository, PrismaFinanceRepository } from './finance.re
 import { createFinanceRoutes } from './finance.routes';
 import { FinanceService } from './finance.service';
 import { type ApplicationModule, type ModuleContext } from '../../shared/modules/module.types';
+import { getRequiredTenantPrisma } from '../../shared/tenancy';
 
 export function createFinanceModule(context: ModuleContext): ApplicationModule {
   const repository =
     context.prisma && context.env.FINANCE_STORAGE !== 'memory'
-      ? new PrismaFinanceRepository(context.prisma)
+      ? new PrismaFinanceRepository(() => getRequiredTenantPrisma())
       : new InMemoryFinanceRepository();
   const service = new FinanceService(repository);
   const controller = new FinanceController(service);

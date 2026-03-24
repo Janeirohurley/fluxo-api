@@ -1,7 +1,8 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 import { HttpError } from '../../shared/http-error';
 import { slicePage } from '../../shared/pagination';
+import { type PrismaClientLike } from '../../shared/prisma';
 import {
   type CloseReconciliationInput,
   type CreateAccountingAccountInput,
@@ -625,7 +626,18 @@ export class InMemoryFinanceRepository implements FinanceRepository {
 }
 
 export class PrismaFinanceRepository implements FinanceRepository {
-  constructor(private readonly prisma: any) {}
+  constructor(private readonly prismaResolver: PrismaClientLike | (() => PrismaClientLike | null)) {}
+
+  private get prisma() {
+    const prisma =
+      typeof this.prismaResolver === 'function' ? this.prismaResolver() : this.prismaResolver;
+
+    if (!prisma) {
+      throw new HttpError(503, 'Tenant database client is not available for finance');
+    }
+
+    return prisma as any;
+  }
 
   async listPaymentMethods(): Promise<PaymentMethod[]> {
     const methods = await this.prisma.paymentMethod.findMany({

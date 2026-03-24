@@ -9,7 +9,7 @@ export const MODULE_CATALOG = [
     code: 'finance',
     name: 'Finance',
     description: 'Entrees, sorties, rapprochements et suivi financier.',
-    availability: 'coming_soon'
+    availability: 'available'
   },
   {
     code: 'employees',

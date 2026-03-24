@@ -113,6 +113,47 @@ export class TenantProvisioningService {
           [randomUUID(), name]
         );
       }
+
+      for (const name of ['bank-transfer', 'cash', 'mobile-money', 'card']) {
+        await client.query(
+          `
+            INSERT INTO payment_methods (id, name, created_at, updated_at)
+            VALUES ($1, $2, NOW(), NOW())
+            ON CONFLICT (name) DO NOTHING
+          `,
+          [randomUUID(), name]
+        );
+      }
+
+      for (const name of ['income', 'expense', 'transfer', 'adjustment']) {
+        await client.query(
+          `
+            INSERT INTO transaction_types (id, name, created_at, updated_at)
+            VALUES ($1, $2, NOW(), NOW())
+            ON CONFLICT (name) DO NOTHING
+          `,
+          [randomUUID(), name]
+        );
+      }
+
+      const accountingAccounts = [
+        ['1000', 'Cash and Cash Equivalents', 'asset'],
+        ['1100', 'Accounts Receivable', 'asset'],
+        ['2000', 'Accounts Payable', 'liability'],
+        ['4000', 'Operating Revenue', 'revenue'],
+        ['5000', 'Operating Expense', 'expense']
+      ] as const;
+
+      for (const [code, name, accountType] of accountingAccounts) {
+        await client.query(
+          `
+            INSERT INTO accounting_accounts (id, code, name, account_type, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, TRUE, NOW(), NOW())
+            ON CONFLICT (code) DO NOTHING
+          `,
+          [randomUUID(), code, name, accountType]
+        );
+      }
     } finally {
       await client.end();
     }
