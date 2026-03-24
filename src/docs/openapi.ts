@@ -138,7 +138,7 @@ export function createOpenApiDocument() {
       title: 'Fluxo API',
       version: '1.0.0',
       description:
-        'Modular API for Fluxo. The current Swagger coverage focuses on the assets module and core discovery endpoints.'
+        'Modular API for Fluxo. The current Swagger coverage focuses on the assets and finance modules, plus core discovery endpoints.'
     },
     servers: [
       {
@@ -156,7 +156,14 @@ export function createOpenApiDocument() {
       { name: 'Intervention Types', description: 'Maintenance intervention reference data' },
       { name: 'Asset Finance', description: 'One-to-one finance data for assets' },
       { name: 'Asset Assignments', description: 'Assignment history for assets' },
-      { name: 'Asset Maintenance', description: 'Maintenance logs for assets' }
+      { name: 'Asset Maintenance', description: 'Maintenance logs for assets' },
+      { name: 'Finance', description: 'Finance domain operations' },
+      { name: 'Payment Methods', description: 'Finance payment method reference data' },
+      { name: 'Transaction Types', description: 'Finance transaction type reference data' },
+      { name: 'Accounting Accounts', description: 'Chart of accounts and finance reference data' },
+      { name: 'Transactions', description: 'Cash movement and transaction tracking' },
+      { name: 'Journal Entries', description: 'Journal entries and their accounting lines' },
+      { name: 'Reconciliations', description: 'Account reconciliation operations' }
     ],
     paths: {
       '/': {
@@ -922,6 +929,481 @@ export function createOpenApiDocument() {
             }
           }
         }
+      },
+      '/api/finance/docs': {
+        get: {
+          tags: ['Finance'],
+          summary: 'Finance module documentation',
+          security: [
+            {
+              ModuleKeyAuth: []
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Finance module documentation payload'
+            }
+          }
+        }
+      },
+      '/api/finance/payment-methods': {
+        get: {
+          tags: ['Payment Methods'],
+          summary: 'List payment methods',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Payment method list',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/PaymentMethod' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Payment Methods'],
+          summary: 'Create payment method',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreatePaymentMethodInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created payment method' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/transaction-types': {
+        get: {
+          tags: ['Transaction Types'],
+          summary: 'List transaction types',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Transaction type list',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/TransactionType' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Transaction Types'],
+          summary: 'Create transaction type',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateTransactionTypeInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created transaction type' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/accounts': {
+        get: {
+          tags: ['Accounting Accounts'],
+          summary: 'List accounting accounts',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Accounting account list',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/AccountingAccount' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Accounting Accounts'],
+          summary: 'Create accounting account',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateAccountingAccountInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created accounting account' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/accounts/{id}': {
+        patch: {
+          tags: ['Accounting Accounts'],
+          summary: 'Update accounting account',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UpdateAccountingAccountInput' }
+              }
+            }
+          },
+          responses: {
+            '200': { description: 'Updated accounting account' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/transactions': {
+        get: {
+          tags: ['Transactions'],
+          summary: 'List finance transactions',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'transactionTypeId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'paymentMethodId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'accountingCategory', in: 'query', schema: { type: 'string' } },
+            { name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date' } },
+            { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date' } },
+            {
+              name: 'sortBy',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['transactionDate', 'amount', 'createdAt', 'updatedAt'],
+                default: 'transactionDate'
+              }
+            },
+            {
+              name: 'sortOrder',
+              in: 'query',
+              schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Finance transaction list',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ListFinanceTransactionsResponse' }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Transactions'],
+          summary: 'Create transaction',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateTransactionInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created transaction' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/transactions/{id}': {
+        get: {
+          tags: ['Transactions'],
+          summary: 'Get transaction by id',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          responses: {
+            '200': {
+              description: 'Transaction details',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { $ref: '#/components/schemas/FinanceTransactionDetails' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { $ref: '#/components/responses/NotFound' }
+          }
+        },
+        patch: {
+          tags: ['Transactions'],
+          summary: 'Update transaction',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UpdateTransactionInput' }
+              }
+            }
+          },
+          responses: {
+            '200': { description: 'Updated transaction' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        },
+        delete: {
+          tags: ['Transactions'],
+          summary: 'Delete transaction',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          responses: {
+            '204': { description: 'Transaction deleted' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/journal-entries': {
+        get: {
+          tags: ['Journal Entries'],
+          summary: 'List journal entries',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Journal entry list',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ListJournalEntriesResponse' }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Journal Entries'],
+          summary: 'Create journal entry',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateJournalEntryInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created journal entry' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/journal-entries/{id}': {
+        get: {
+          tags: ['Journal Entries'],
+          summary: 'Get journal entry by id',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          responses: {
+            '200': {
+              description: 'Journal entry details',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { $ref: '#/components/schemas/JournalEntryDetails' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { $ref: '#/components/responses/NotFound' }
+          }
+        }
+      },
+      '/api/finance/journal-entries/{id}/post': {
+        post: {
+          tags: ['Journal Entries'],
+          summary: 'Post journal entry',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    postedBy: { type: 'string', format: 'uuid' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': { description: 'Posted journal entry' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/reconciliations': {
+        get: {
+          tags: ['Reconciliations'],
+          summary: 'List reconciliations',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Reconciliation list',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ListReconciliationsResponse' }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Reconciliations'],
+          summary: 'Create reconciliation',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateReconciliationInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created reconciliation' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/reconciliations/{id}': {
+        get: {
+          tags: ['Reconciliations'],
+          summary: 'Get reconciliation by id',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          responses: {
+            '200': {
+              description: 'Reconciliation details',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { $ref: '#/components/schemas/ReconciliationDetails' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { $ref: '#/components/responses/NotFound' }
+          }
+        }
+      },
+      '/api/finance/reconciliations/{id}/close': {
+        post: {
+          tags: ['Reconciliations'],
+          summary: 'Close reconciliation',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    closedBy: { type: 'string', format: 'uuid' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': { description: 'Closed reconciliation' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/finance/reconciliations/{id}/items': {
+        post: {
+          tags: ['Reconciliations'],
+          summary: 'Add reconciliation item',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/AssetId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateReconciliationItemInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created reconciliation item' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
       }
     },
     components: {
@@ -1338,6 +1820,366 @@ export function createOpenApiDocument() {
             updatedAt: { type: 'string', format: 'date-time' }
           },
           required: ['id', 'createdAt', 'updatedAt']
+        },
+        PaymentMethod: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                name: { type: 'string', example: 'bank-transfer' }
+              },
+              required: ['name']
+            }
+          ]
+        },
+        TransactionType: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                name: { type: 'string', example: 'expense' }
+              },
+              required: ['name']
+            }
+          ]
+        },
+        AccountingAccount: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                code: { type: 'string', example: '5000' },
+                name: { type: 'string', example: 'Operating Expense' },
+                accountType: {
+                  type: 'string',
+                  enum: ['asset', 'liability', 'equity', 'revenue', 'expense']
+                },
+                isActive: { type: 'boolean', example: true }
+              },
+              required: ['code', 'name', 'accountType', 'isActive']
+            }
+          ]
+        },
+        CreatePaymentMethodInput: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', example: 'bank-transfer' }
+          },
+          required: ['name']
+        },
+        CreateTransactionTypeInput: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', example: 'expense' }
+          },
+          required: ['name']
+        },
+        CreateAccountingAccountInput: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: '5000' },
+            name: { type: 'string', example: 'Operating Expense' },
+            accountType: {
+              type: 'string',
+              enum: ['asset', 'liability', 'equity', 'revenue', 'expense']
+            },
+            isActive: { type: 'boolean', example: true }
+          },
+          required: ['code', 'name', 'accountType']
+        },
+        UpdateAccountingAccountInput: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: '5000' },
+            name: { type: 'string', example: 'Operating Expense' },
+            accountType: {
+              type: 'string',
+              enum: ['asset', 'liability', 'equity', 'revenue', 'expense']
+            },
+            isActive: { type: 'boolean', example: true }
+          }
+        },
+        CreateTransactionInput: {
+          type: 'object',
+          properties: {
+            transactionTypeId: { type: 'string', format: 'uuid' },
+            accountingCategory: { type: 'string', example: 'office-supplies' },
+            amount: { type: 'number', example: 120.5 },
+            paymentMethodId: { type: 'string', format: 'uuid' },
+            referenceNumber: { type: 'string', nullable: true, example: 'TXN-1001' },
+            transactionDate: { type: 'string', format: 'date', example: '2026-03-24' },
+            description: { type: 'string', nullable: true, example: 'Office supplies purchase' },
+            employeeId: { type: 'string', format: 'uuid', nullable: true },
+            assetId: { type: 'string', format: 'uuid', nullable: true },
+            paySlipId: { type: 'string', format: 'uuid', nullable: true },
+            journalEntryId: { type: 'string', format: 'uuid', nullable: true }
+          },
+          required: [
+            'transactionTypeId',
+            'accountingCategory',
+            'amount',
+            'paymentMethodId',
+            'transactionDate'
+          ]
+        },
+        UpdateTransactionInput: {
+          type: 'object',
+          properties: {
+            transactionTypeId: { type: 'string', format: 'uuid' },
+            accountingCategory: { type: 'string' },
+            amount: { type: 'number' },
+            paymentMethodId: { type: 'string', format: 'uuid' },
+            referenceNumber: { type: 'string', nullable: true },
+            transactionDate: { type: 'string', format: 'date' },
+            description: { type: 'string', nullable: true },
+            employeeId: { type: 'string', format: 'uuid', nullable: true },
+            assetId: { type: 'string', format: 'uuid', nullable: true },
+            paySlipId: { type: 'string', format: 'uuid', nullable: true },
+            journalEntryId: { type: 'string', format: 'uuid', nullable: true }
+          }
+        },
+        FinanceTransaction: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                transactionTypeId: { type: 'string', format: 'uuid' },
+                accountingCategory: { type: 'string', example: 'office-supplies' },
+                amount: { type: 'number', example: 120.5 },
+                paymentMethodId: { type: 'string', format: 'uuid' },
+                referenceNumber: { type: 'string', nullable: true },
+                transactionDate: { type: 'string', format: 'date' },
+                description: { type: 'string', nullable: true },
+                employeeId: { type: 'string', format: 'uuid', nullable: true },
+                assetId: { type: 'string', format: 'uuid', nullable: true },
+                paySlipId: { type: 'string', format: 'uuid', nullable: true },
+                journalEntryId: { type: 'string', format: 'uuid', nullable: true }
+              },
+              required: [
+                'transactionTypeId',
+                'accountingCategory',
+                'amount',
+                'paymentMethodId',
+                'transactionDate'
+              ]
+            }
+          ]
+        },
+        FinanceTransactionDetails: {
+          allOf: [
+            { $ref: '#/components/schemas/FinanceTransaction' },
+            {
+              type: 'object',
+              properties: {
+                paymentMethod: {
+                  anyOf: [
+                    { $ref: '#/components/schemas/PaymentMethod' },
+                    { type: 'null' }
+                  ]
+                },
+                transactionType: {
+                  anyOf: [
+                    { $ref: '#/components/schemas/TransactionType' },
+                    { type: 'null' }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        ListFinanceTransactionsResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/FinanceTransactionDetails' }
+            },
+            pagination: { $ref: '#/components/schemas/PaginationInfo' }
+          },
+          required: ['data', 'pagination']
+        },
+        CreateJournalEntryLineInput: {
+          type: 'object',
+          properties: {
+            accountId: { type: 'string', format: 'uuid' },
+            debitAmount: { type: 'number', example: 120.5 },
+            creditAmount: { type: 'number', example: 0 },
+            description: { type: 'string', nullable: true },
+            employeeId: { type: 'string', format: 'uuid', nullable: true },
+            assetId: { type: 'string', format: 'uuid', nullable: true },
+            paySlipId: { type: 'string', format: 'uuid', nullable: true },
+            referenceNumber: { type: 'string', nullable: true }
+          },
+          required: ['accountId']
+        },
+        CreateJournalEntryInput: {
+          type: 'object',
+          properties: {
+            entryNumber: { type: 'string', example: 'JE-2026-0001' },
+            entryDate: { type: 'string', format: 'date' },
+            description: { type: 'string', nullable: true },
+            periodYear: { type: 'integer', example: 2026 },
+            periodMonth: { type: 'integer', example: 3 },
+            status: { type: 'string', enum: ['draft', 'posted'], example: 'draft' },
+            postedBy: { type: 'string', format: 'uuid', nullable: true },
+            lines: {
+              type: 'array',
+              minItems: 2,
+              items: { $ref: '#/components/schemas/CreateJournalEntryLineInput' }
+            }
+          },
+          required: ['entryNumber', 'entryDate', 'periodYear', 'periodMonth', 'lines']
+        },
+        JournalEntryLine: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                journalEntryId: { type: 'string', format: 'uuid' },
+                accountId: { type: 'string', format: 'uuid' },
+                debitAmount: { type: 'number' },
+                creditAmount: { type: 'number' },
+                description: { type: 'string', nullable: true },
+                employeeId: { type: 'string', format: 'uuid', nullable: true },
+                assetId: { type: 'string', format: 'uuid', nullable: true },
+                paySlipId: { type: 'string', format: 'uuid', nullable: true },
+                referenceNumber: { type: 'string', nullable: true }
+              },
+              required: ['journalEntryId', 'accountId', 'debitAmount', 'creditAmount']
+            }
+          ]
+        },
+        JournalEntryDetails: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                entryNumber: { type: 'string' },
+                entryDate: { type: 'string', format: 'date' },
+                description: { type: 'string', nullable: true },
+                periodYear: { type: 'integer' },
+                periodMonth: { type: 'integer' },
+                status: { type: 'string', enum: ['draft', 'posted'] },
+                postedBy: { type: 'string', format: 'uuid', nullable: true },
+                postedAt: { type: 'string', format: 'date-time', nullable: true },
+                lines: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/JournalEntryLine' }
+                }
+              },
+              required: ['entryNumber', 'entryDate', 'periodYear', 'periodMonth', 'status', 'lines']
+            }
+          ]
+        },
+        ListJournalEntriesResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/JournalEntryDetails' }
+            },
+            pagination: { $ref: '#/components/schemas/PaginationInfo' }
+          },
+          required: ['data', 'pagination']
+        },
+        CreateReconciliationInput: {
+          type: 'object',
+          properties: {
+            reconciliationType: { type: 'string', example: 'bank' },
+            accountId: { type: 'string', format: 'uuid' },
+            statementStartDate: { type: 'string', format: 'date' },
+            statementEndDate: { type: 'string', format: 'date' },
+            statementBalance: { type: 'number', example: 15230.4 },
+            bookBalance: { type: 'number', example: 15190.4 },
+            status: { type: 'string', enum: ['open', 'closed'], example: 'open' },
+            closedBy: { type: 'string', format: 'uuid', nullable: true }
+          },
+          required: [
+            'reconciliationType',
+            'accountId',
+            'statementStartDate',
+            'statementEndDate',
+            'statementBalance',
+            'bookBalance'
+          ]
+        },
+        CreateReconciliationItemInput: {
+          type: 'object',
+          properties: {
+            transactionId: { type: 'string', format: 'uuid', nullable: true },
+            journalEntryLineId: { type: 'string', format: 'uuid', nullable: true }
+          }
+        },
+        ReconciliationItem: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                reconciliationId: { type: 'string', format: 'uuid' },
+                transactionId: { type: 'string', format: 'uuid', nullable: true },
+                journalEntryLineId: { type: 'string', format: 'uuid', nullable: true },
+                matchedAt: { type: 'string', format: 'date-time' }
+              },
+              required: ['reconciliationId', 'matchedAt']
+            }
+          ]
+        },
+        ReconciliationDetails: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                reconciliationType: { type: 'string' },
+                accountId: { type: 'string', format: 'uuid' },
+                statementStartDate: { type: 'string', format: 'date' },
+                statementEndDate: { type: 'string', format: 'date' },
+                statementBalance: { type: 'number' },
+                bookBalance: { type: 'number' },
+                status: { type: 'string', enum: ['open', 'closed'] },
+                closedBy: { type: 'string', format: 'uuid', nullable: true },
+                closedAt: { type: 'string', format: 'date-time', nullable: true },
+                account: {
+                  anyOf: [
+                    { $ref: '#/components/schemas/AccountingAccount' },
+                    { type: 'null' }
+                  ]
+                },
+                items: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/ReconciliationItem' }
+                }
+              },
+              required: [
+                'reconciliationType',
+                'accountId',
+                'statementStartDate',
+                'statementEndDate',
+                'statementBalance',
+                'bookBalance',
+                'status',
+                'items'
+              ]
+            }
+          ]
+        },
+        ListReconciliationsResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/ReconciliationDetails' }
+            },
+            pagination: { $ref: '#/components/schemas/PaginationInfo' }
+          },
+          required: ['data', 'pagination']
         },
         AssetCategory: {
           allOf: [

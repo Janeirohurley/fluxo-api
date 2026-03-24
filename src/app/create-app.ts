@@ -40,7 +40,7 @@ export function createApp() {
     version,
     basePath,
     requiresAccessKey,
-    ...(name === 'assets' ? { docsPath: `${basePath}/docs` } : {})
+    ...(['assets', 'finance'].includes(name) ? { docsPath: `${basePath}/docs` } : {})
   }));
   app.locals.prisma = prisma;
 

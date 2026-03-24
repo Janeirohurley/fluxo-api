@@ -26,7 +26,7 @@ type AdminRequestView = {
   companyName: string;
   email: string;
   notes: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'provisioning' | 'failed';
   requestedModules: string[];
   adminMessage: string | null;
   createdAt: Date;

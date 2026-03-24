@@ -144,6 +144,8 @@ model Asset {
   financeData   AssetFinanceData?
   assignments   AssetAssignment[]
   maintenance   MaintenanceLog[]
+  transactions  FinanceTransaction[]
+  journalLines  JournalEntryLine[]
   createdAt     DateTime           @default(now()) @map("created_at")
   updatedAt     DateTime           @updatedAt @map("updated_at")
 
@@ -190,6 +192,155 @@ model MaintenanceLog {
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
   @@map("maintenance_logs")
+}
+
+model PaymentMethod {
+  id           String             @id @default(uuid()) @db.Uuid
+  name         String             @unique
+  transactions FinanceTransaction[]
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  @@map("payment_methods")
+}
+
+model TransactionType {
+  id           String             @id @default(uuid()) @db.Uuid
+  name         String             @unique
+  transactions FinanceTransaction[]
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  @@map("transaction_types")
+}
+
+model AccountingAccount {
+  id                String            @id @default(uuid()) @db.Uuid
+  code              String            @unique
+  name              String
+  accountType       String            @map("account_type")
+  isActive          Boolean           @default(true) @map("is_active")
+  journalEntryLines JournalEntryLine[]
+  reconciliations   Reconciliation[]
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([accountType])
+  @@index([isActive])
+  @@map("accounting_accounts")
+}
+
+model FinanceTransaction {
+  id                 String           @id @default(uuid()) @db.Uuid
+  transactionTypeId  String           @db.Uuid @map("transaction_type_id")
+  accountingCategory String           @map("accounting_category")
+  amount             Decimal          @db.Decimal(15, 2)
+  paymentMethodId    String           @db.Uuid @map("payment_method_id")
+  referenceNumber    String?          @map("reference_number")
+  transactionDate    DateTime         @map("transaction_date") @db.Date
+  description        String?
+  employeeId         String?          @db.Uuid @map("employee_id")
+  assetId            String?          @db.Uuid @map("asset_id")
+  paySlipId          String?          @db.Uuid @map("pay_slip_id")
+  journalEntryId     String?          @db.Uuid @map("journal_entry_id")
+  transactionType    TransactionType  @relation(fields: [transactionTypeId], references: [id], onDelete: Restrict)
+  paymentMethod      PaymentMethod    @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  asset              Asset?           @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  journalEntry       JournalEntry?    @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+  reconciliationItems ReconciliationItem[]
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  @@index([transactionTypeId])
+  @@index([paymentMethodId])
+  @@index([transactionDate])
+  @@index([assetId])
+  @@index([journalEntryId])
+  @@map("transactions")
+}
+
+model JournalEntry {
+  id            String             @id @default(uuid()) @db.Uuid
+  entryNumber   String             @unique @map("entry_number")
+  entryDate     DateTime           @map("entry_date") @db.Date
+  description   String?
+  periodYear    Int                @map("period_year")
+  periodMonth   Int                @map("period_month")
+  status        String
+  postedAt      DateTime?          @map("posted_at")
+  postedBy      String?            @db.Uuid @map("posted_by")
+  lines         JournalEntryLine[]
+  transactions  FinanceTransaction[]
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@index([entryDate])
+  @@index([periodYear, periodMonth])
+  @@index([status])
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id              String                @id @default(uuid()) @db.Uuid
+  journalEntryId  String                @db.Uuid @map("journal_entry_id")
+  accountId       String                @db.Uuid @map("account_id")
+  debitAmount     Decimal               @default(0) @map("debit_amount") @db.Decimal(15, 2)
+  creditAmount    Decimal               @default(0) @map("credit_amount") @db.Decimal(15, 2)
+  description     String?
+  employeeId      String?               @db.Uuid @map("employee_id")
+  assetId         String?               @db.Uuid @map("asset_id")
+  paySlipId       String?               @db.Uuid @map("pay_slip_id")
+  referenceNumber String?               @map("reference_number")
+  journalEntry    JournalEntry          @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account         AccountingAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  asset           Asset?                @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  reconciliationItems ReconciliationItem[]
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([assetId])
+  @@map("journal_entry_lines")
+}
+
+model Reconciliation {
+  id                    String               @id @default(uuid()) @db.Uuid
+  reconciliationType    String               @map("reconciliation_type")
+  accountId             String               @db.Uuid @map("account_id")
+  statementStartDate    DateTime             @map("statement_start_date") @db.Date
+  statementEndDate      DateTime             @map("statement_end_date") @db.Date
+  statementBalance      Decimal              @map("statement_balance") @db.Decimal(15, 2)
+  bookBalance           Decimal              @map("book_balance") @db.Decimal(15, 2)
+  status                String
+  closedAt              DateTime?            @map("closed_at")
+  closedBy              String?              @db.Uuid @map("closed_by")
+  account               AccountingAccount    @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  items                 ReconciliationItem[]
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+
+  @@index([accountId])
+  @@index([status])
+  @@map("reconciliations")
+}
+
+model ReconciliationItem {
+  id                 String            @id @default(uuid()) @db.Uuid
+  reconciliationId   String            @db.Uuid @map("reconciliation_id")
+  transactionId      String?           @db.Uuid @map("transaction_id")
+  journalEntryLineId String?           @db.Uuid @map("journal_entry_line_id")
+  matchedAt          DateTime          @default(now()) @map("matched_at")
+  reconciliation     Reconciliation    @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  transaction        FinanceTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  journalEntryLine   JournalEntryLine? @relation(fields: [journalEntryLineId], references: [id], onDelete: SetNull)
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  @@index([reconciliationId])
+  @@index([transactionId])
+  @@index([journalEntryLineId])
+  @@map("reconciliation_items")
 }
 
 model AuditLog {

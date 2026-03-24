@@ -1,10 +1,15 @@
 import { FinanceController } from './finance.controller';
+import { InMemoryFinanceRepository, PrismaFinanceRepository } from './finance.repository';
 import { createFinanceRoutes } from './finance.routes';
 import { FinanceService } from './finance.service';
 import { type ApplicationModule, type ModuleContext } from '../../shared/modules/module.types';
 
-export function createFinanceModule(_context: ModuleContext): ApplicationModule {
-  const service = new FinanceService();
+export function createFinanceModule(context: ModuleContext): ApplicationModule {
+  const repository =
+    context.prisma && context.env.FINANCE_STORAGE !== 'memory'
+      ? new PrismaFinanceRepository(context.prisma)
+      : new InMemoryFinanceRepository();
+  const service = new FinanceService(repository);
   const controller = new FinanceController(service);
 
   return {
