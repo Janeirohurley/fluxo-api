@@ -22,6 +22,7 @@ export class OverviewService {
     return {
       generatedAt: context.generatedAt,
       companyContext: {
+        company: context.accessSession.company,
         accessKey: {
           keyId: context.accessSession.keyId,
           keyPrefix: context.accessSession.keyPrefix,

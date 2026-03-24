@@ -12,7 +12,7 @@ export class OverviewController {
   getOverview = async (_req: Request, res: Response) => {
     const accessSession = res.locals.accessSession;
     const overview = await this.overviewService.buildOverview({
-      prisma: res.app.locals.prisma ?? null,
+      prisma: res.locals.tenantPrisma ?? null,
       accessSession,
       mountedModules: this.mountedModules,
       generatedAt: new Date().toISOString()

@@ -86,6 +86,11 @@ test('OverviewService composes providers into a progressive overview payload', a
       keyPrefix: 'flx_live_demo',
       label: 'demo',
       expiresAt: null,
+      company: {
+        id: '33333333-3333-3333-3333-333333333333',
+        slug: 'demo-company',
+        name: 'Demo Company'
+      },
       plan: {
         id: '22222222-2222-2222-2222-222222222222',
         code: 'assets-starter',
@@ -99,6 +104,7 @@ test('OverviewService composes providers into a progressive overview payload', a
   assert.equal(result.summary.activeModulesCount, 1);
   assert.equal(result.summary.readyModulesCount, 1);
   assert.equal(result.summary.insightsCount, 1);
+  assert.equal(result.companyContext.company?.slug, 'demo-company');
   assert.equal(result.modules.assets.status, 'ready');
   assert.equal(result.modules.finance.status, 'disabled');
   assert.equal(result.crossModule.status, 'insufficient_modules');

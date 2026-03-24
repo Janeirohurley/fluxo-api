@@ -49,6 +49,11 @@ export type OverviewProvider = {
 export type OverviewResponse = {
   generatedAt: string;
   companyContext: {
+    company: {
+      id: string;
+      slug: string;
+      name: string;
+    } | null;
     accessKey: {
       keyId: string;
       keyPrefix: string;

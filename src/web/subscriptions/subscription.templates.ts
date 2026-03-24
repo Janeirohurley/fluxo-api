@@ -9,6 +9,7 @@ type PortalPageData = {
     code: string;
     name: string;
     description: string;
+    availability: 'available' | 'coming_soon';
   }>;
   successMessage?: string | null;
   errorMessage?: string | null;
@@ -26,18 +27,26 @@ type AdminRequestView = {
   companyName: string;
   email: string;
   notes: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'provisioning' | 'failed';
+  status: 'pending' | 'provisioning' | 'approved' | 'failed' | 'rejected';
   requestedModules: string[];
   adminMessage: string | null;
   createdAt: Date;
   processedAt: Date | null;
   emailError: string | null;
+  approvedCompany?: {
+    slug: string;
+    database?: {
+      databaseName: string;
+      provisioningStatus: 'pending' | 'provisioning' | 'ready' | 'failed';
+    } | null;
+  } | null;
 };
 
 type AdminPageData = {
   token: string;
   requests: ReadonlyArray<AdminRequestView>;
   message?: string | null;
+  errorMessage?: string | null;
 };
 
 type ApprovalResultData = {
@@ -47,9 +56,34 @@ type ApprovalResultData = {
   modules: string[];
   key: string;
   planName: string;
+  companySlug: string;
+  databaseName: string;
   emailSent: boolean;
   emailError: string | null;
   adminMessage: string | null;
+  successMessage?: string | null;
+};
+
+type EditSubscriptionPageData = {
+  token: string;
+  request: {
+    id: string;
+    companyName: string;
+    email: string;
+    status: 'approved' | 'failed';
+    modules: string[];
+    companySlug: string | null;
+    databaseName: string | null;
+  };
+  catalog: ReadonlyArray<{
+    code: string;
+    name: string;
+    description: string;
+    availability: 'available' | 'coming_soon';
+  }>;
+  message?: string | null;
+  errorMessage?: string | null;
+  adminMessage?: string | null;
 };
 
 function formatDateTime(value: Date | null) {
@@ -195,6 +229,28 @@ function renderLayout(title: string, body: string) {
             background: #fffefb;
           }
           .module-option input { width: auto; margin-top: 3px; }
+          .module-option.disabled {
+            opacity: 0.58;
+            background: #f7f3ec;
+          }
+          .module-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+          .coming-soon {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #efe7da;
+            color: #7c6351;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
           .actions { display: flex; flex-wrap: wrap; gap: 12px; }
           button {
             border: none;
@@ -315,6 +371,16 @@ function renderLayout(title: string, body: string) {
             color: #b91c1c;
             background: #fef2f2;
             border-color: #fecaca;
+          }
+          .status-badge.provisioning {
+            color: #1d4ed8;
+            background: #eff6ff;
+            border-color: #bfdbfe;
+          }
+          .status-badge.failed {
+            color: #b91c1c;
+            background: #fff1f2;
+            border-color: #fecdd3;
           }
           .admin-action-form {
             display: grid;
@@ -565,15 +631,19 @@ export function renderPortalPage(data: PortalPageData) {
               ${data.modules
                 .map(
                   (module) => `
-                    <label class="module-option">
+                    <label class="module-option ${module.availability !== 'available' ? 'disabled' : ''}">
                       <input
                         type="checkbox"
                         name="modules"
                         value="${module.code}"
                         ${selectedModules.includes(module.code) ? 'checked' : ''}
+                        ${module.availability !== 'available' ? 'disabled' : ''}
                       />
                       <span>
-                        <strong>${module.name}</strong><br />
+                        <span class="module-meta">
+                          <strong>${module.name}</strong>
+                          ${module.availability !== 'available' ? '<span class="coming-soon">Coming soon</span>' : ''}
+                        </span><br />
                         <span class="muted">${module.description}</span>
                       </span>
                     </label>
@@ -635,6 +705,7 @@ export function renderAdminPage(data: AdminPageData) {
       </section>
 
       ${data.message ? `<div class="notice ok">${data.message}</div>` : ''}
+      ${data.errorMessage ? `<div class="notice bad">${data.errorMessage}</div>` : ''}
 
       <section class="panel">
         <div class="admin-summary">
@@ -669,6 +740,9 @@ export function renderAdminPage(data: AdminPageData) {
                             <td class="stack">
                               ${request.notes ? `<span><strong>Note:</strong> ${request.notes}</span>` : '<span class="muted">Aucune note</span>'}
                               ${request.adminMessage ? `<span><strong>Admin:</strong> ${request.adminMessage}</span>` : ''}
+                              ${request.approvedCompany?.slug ? `<span><strong>Tenant:</strong> ${request.approvedCompany.slug}</span>` : ''}
+                              ${request.approvedCompany?.database?.databaseName ? `<span><strong>Base:</strong> ${request.approvedCompany.database.databaseName}</span>` : ''}
+                              ${request.approvedCompany?.database?.provisioningStatus ? `<span><strong>Provisioning:</strong> ${request.approvedCompany.database.provisioningStatus}</span>` : ''}
                               ${request.emailError ? `<span style="color: #b91c1c;"><strong>Email:</strong> ${request.emailError}</span>` : ''}
                             </td>
                             <td>
@@ -690,7 +764,32 @@ export function renderAdminPage(data: AdminPageData) {
                                       </div>
                                     </form>
                                   `
-                                  : `<span class="muted">Traitee${request.processedAt ? ` le ${formatDateTime(request.processedAt)}` : ''}</span>`
+                                  : request.status === 'failed'
+                                    ? `
+                                      <div class="actions" style="margin-bottom: 12px;">
+                                        <a class="pricing-cta" href="/admin/subscriptions/${request.id}/edit?token=${encodeURIComponent(data.token)}">Edit modules</a>
+                                      </div>
+                                      <form method="post" action="/admin/subscriptions/${request.id}/retry" class="admin-action-form">
+                                        <input type="hidden" name="token" value="${data.token}" />
+                                        <textarea name="adminMessage" placeholder="Message optionnel pour relancer le tenant"></textarea>
+                                        <div class="actions">
+                                          <button type="submit" class="secondary">Retry</button>
+                                        </div>
+                                      </form>
+                                    `
+                                  : `
+                                      <form method="post" action="/admin/subscriptions/${request.id}/resync" class="admin-action-form" style="margin-bottom: 12px;">
+                                        <input type="hidden" name="token" value="${data.token}" />
+                                        <textarea name="adminMessage" placeholder="Message optionnel pour la resynchronisation"></textarea>
+                                        <div class="actions">
+                                          <button type="submit" class="secondary">Resync</button>
+                                        </div>
+                                      </form>
+                                      <div class="actions">
+                                        <a class="pricing-cta" href="/admin/subscriptions/${request.id}/edit?token=${encodeURIComponent(data.token)}">Edit modules</a>
+                                      </div>
+                                      <span class="muted">Traitee${request.processedAt ? ` le ${formatDateTime(request.processedAt)}` : ''}</span>
+                                    `
                               }
                             </td>
                           </tr>
@@ -728,6 +827,9 @@ export function renderAdminPage(data: AdminPageData) {
                           <div class="stack">
                             ${request.notes ? `<span><strong>Note:</strong> ${request.notes}</span>` : '<span class="muted">Aucune note</span>'}
                             ${request.adminMessage ? `<span><strong>Admin:</strong> ${request.adminMessage}</span>` : ''}
+                            ${request.approvedCompany?.slug ? `<span><strong>Tenant:</strong> ${request.approvedCompany.slug}</span>` : ''}
+                            ${request.approvedCompany?.database?.databaseName ? `<span><strong>Base:</strong> ${request.approvedCompany.database.databaseName}</span>` : ''}
+                            ${request.approvedCompany?.database?.provisioningStatus ? `<span><strong>Provisioning:</strong> ${request.approvedCompany.database.provisioningStatus}</span>` : ''}
                             ${request.emailError ? `<span style="color: #b91c1c;"><strong>Email:</strong> ${request.emailError}</span>` : ''}
                           </div>
                         </div>
@@ -748,8 +850,33 @@ export function renderAdminPage(data: AdminPageData) {
                                   <button type="submit" class="danger">Refuser</button>
                                 </div>
                               </form>
-                            `
-                            : `<div class="muted">Traitee${request.processedAt ? ` le ${formatDateTime(request.processedAt)}` : ''}</div>`
+                              `
+                            : request.status === 'failed'
+                              ? `
+                                <div class="actions" style="margin-bottom: 12px;">
+                                  <a class="pricing-cta" href="/admin/subscriptions/${request.id}/edit?token=${encodeURIComponent(data.token)}">Edit modules</a>
+                                </div>
+                                <form method="post" action="/admin/subscriptions/${request.id}/retry" class="admin-action-form">
+                                  <input type="hidden" name="token" value="${data.token}" />
+                                  <textarea name="adminMessage" placeholder="Message optionnel pour relancer le tenant"></textarea>
+                                  <div class="actions">
+                                    <button type="submit" class="secondary">Retry</button>
+                                  </div>
+                                </form>
+                              `
+                            : `
+                                <form method="post" action="/admin/subscriptions/${request.id}/resync" class="admin-action-form" style="margin-bottom: 12px;">
+                                  <input type="hidden" name="token" value="${data.token}" />
+                                  <textarea name="adminMessage" placeholder="Message optionnel pour la resynchronisation"></textarea>
+                                  <div class="actions">
+                                    <button type="submit" class="secondary">Resync</button>
+                                  </div>
+                                </form>
+                                <div class="actions" style="margin-bottom: 12px;">
+                                  <a class="pricing-cta" href="/admin/subscriptions/${request.id}/edit?token=${encodeURIComponent(data.token)}">Edit modules</a>
+                                </div>
+                                <div class="muted">Traitee${request.processedAt ? ` le ${formatDateTime(request.processedAt)}` : ''}</div>
+                              `
                         }
                       </article>
                     `
@@ -767,6 +894,7 @@ export function renderApprovalResultPage(data: ApprovalResultData) {
   return renderLayout(
     'Fluxo Approval Result',
     `
+      ${data.successMessage ? `<div class="notice ok">${data.successMessage}</div>` : ''}
       <section class="hero">
         <div class="eyebrow">Souscription acceptee</div>
         <h1>${data.companyName}</h1>
@@ -783,6 +911,8 @@ export function renderApprovalResultPage(data: ApprovalResultData) {
           <h2>Resume</h2>
           <p><strong>Email:</strong> ${data.email}</p>
           <p><strong>Plan:</strong> ${data.planName}</p>
+          <p><strong>Tenant:</strong> ${data.companySlug}</p>
+          <p><strong>Base dediee:</strong> ${data.databaseName}</p>
           <p><strong>Modules:</strong> ${data.modules.join(', ')}</p>
           <p><strong>Email envoye:</strong> ${data.emailSent ? 'oui' : 'non'}</p>
           ${
@@ -796,6 +926,73 @@ export function renderApprovalResultPage(data: ApprovalResultData) {
               : ''
           }
           <p><a href="/admin/subscriptions?token=${encodeURIComponent(data.token)}">Retour a l'administration</a></p>
+        </article>
+      </section>
+    `
+  );
+}
+
+export function renderEditSubscriptionPage(data: EditSubscriptionPageData) {
+  return renderLayout(
+    'Fluxo Edit Subscription',
+    `
+      <section class="hero">
+        <div class="eyebrow">Administration</div>
+        <h1>Modifier l abonnement</h1>
+        <p>Ajustez les modules actifs pour ${data.request.companyName}. Les cles existantes restent valides et reliront les droits depuis le plan mis a jour.</p>
+      </section>
+
+      ${data.message ? `<div class="notice ok">${data.message}</div>` : ''}
+      ${data.errorMessage ? `<div class="notice bad">${data.errorMessage}</div>` : ''}
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Entreprise</h2>
+          <p><strong>Nom:</strong> ${data.request.companyName}</p>
+          <p><strong>Email:</strong> ${data.request.email}</p>
+          <p><strong>Etat:</strong> ${data.request.status}</p>
+          <p><strong>Tenant:</strong> ${data.request.companySlug ?? 'non defini'}</p>
+          <p><strong>Base:</strong> ${data.request.databaseName ?? 'non definie'}</p>
+          <p class="muted">Un changement de modules ne regenere pas automatiquement la cle. Les droits sont relus a chaque requete depuis le plan en base.</p>
+        </article>
+
+        <article class="panel">
+          <h2>Modules actifs</h2>
+          <form method="post" action="/admin/subscriptions/${data.request.id}/modules">
+            <input type="hidden" name="token" value="${data.token}" />
+            <div class="modules-list">
+              ${data.catalog
+                .map(
+                  (module) => `
+                    <label class="module-option ${module.availability !== 'available' ? 'disabled' : ''}">
+                      <input
+                        type="checkbox"
+                        name="modules"
+                        value="${module.code}"
+                        ${data.request.modules.includes(module.code) ? 'checked' : ''}
+                        ${module.availability !== 'available' ? 'disabled' : ''}
+                      />
+                      <span>
+                        <span class="module-meta">
+                          <strong>${module.name}</strong>
+                          ${module.availability !== 'available' ? '<span class="coming-soon">Coming soon</span>' : ''}
+                        </span><br />
+                        <span class="muted">${module.description}</span>
+                      </span>
+                    </label>
+                  `
+                )
+                .join('')}
+            </div>
+            <label>
+              Note admin
+              <textarea name="adminMessage" placeholder="Message interne ou motif du changement">${data.adminMessage ?? ''}</textarea>
+            </label>
+            <div class="actions">
+              <button type="submit">Enregistrer</button>
+              <a class="pricing-cta" href="/admin/subscriptions?token=${encodeURIComponent(data.token)}">Retour</a>
+            </div>
+          </form>
         </article>
       </section>
     `
