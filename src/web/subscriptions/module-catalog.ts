@@ -21,7 +21,7 @@ export const MODULE_CATALOG = [
     code: 'payroll',
     name: 'Payroll',
     description: 'Contrats, bulletins et operations de paie.',
-    availability: 'coming_soon'
+    availability: 'available'
   }
 ] as const;
 

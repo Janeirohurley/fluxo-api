@@ -140,7 +140,7 @@ export function createOpenApiDocument() {
       title: 'Fluxo API',
       version: '1.0.0',
       description:
-        'Modular API for Fluxo. The current Swagger coverage focuses on the assets, finance and employees modules, plus core discovery endpoints.'
+        'Modular API for Fluxo. The current Swagger coverage focuses on the assets, finance, employees and payroll modules, plus core discovery endpoints.'
     },
     servers: [
       {
@@ -171,7 +171,10 @@ export function createOpenApiDocument() {
       { name: 'Employee Positions', description: 'Employee position reference data' },
       { name: 'Employee Locations', description: 'Employee location reference data' },
       { name: 'Employee Assignments', description: 'Employee assignment history' },
-      { name: 'Employee Contracts', description: 'Employee contract history' }
+      { name: 'Employee Contracts', description: 'Employee contract history' },
+      { name: 'Payroll', description: 'Payroll overview and payslip operations' },
+      { name: 'Payroll Contracts', description: 'Contracts available for payroll processing' },
+      { name: 'Payslips', description: 'Payslip lifecycle and payroll line operations' }
     ],
     paths: {
       '/': {
@@ -1785,6 +1788,318 @@ export function createOpenApiDocument() {
             '409': { $ref: '#/components/responses/Conflict' }
           }
         }
+      },
+      '/api/payroll/docs': {
+        get: {
+          tags: ['Payroll'],
+          summary: 'Payroll module documentation',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Payroll module documentation payload'
+            }
+          }
+        }
+      },
+      '/api/payroll': {
+        get: {
+          tags: ['Payroll'],
+          summary: 'Payroll overview',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Payroll overview payload'
+            }
+          }
+        }
+      },
+      '/api/payroll/contracts': {
+        get: {
+          tags: ['Payroll Contracts'],
+          summary: 'List payroll contracts',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'status', in: 'query', schema: { type: 'string' } },
+            { name: 'employeeId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'paymentFrequency', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'sortBy',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['createdAt', 'updatedAt', 'startDate', 'endDate', 'salaryAmount'],
+                default: 'startDate'
+              }
+            },
+            {
+              name: 'sortOrder',
+              in: 'query',
+              schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Payroll contract list',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ListPayrollContractsResponse' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/api/payroll/contracts/{id}': {
+        get: {
+          tags: ['Payroll Contracts'],
+          summary: 'Get payroll contract by id',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/PayrollContractId' }],
+          responses: {
+            '200': {
+              description: 'Payroll contract details',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { $ref: '#/components/schemas/PayrollContract' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { $ref: '#/components/responses/NotFound' }
+          }
+        }
+      },
+      '/api/payroll/payslips': {
+        get: {
+          tags: ['Payslips'],
+          summary: 'List payslips',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['draft', 'issued', 'paid', 'cancelled'] } },
+            { name: 'employeeId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'contractId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            {
+              name: 'sortBy',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['createdAt', 'updatedAt', 'payPeriodStart', 'payPeriodEnd', 'grossAmount', 'netAmount'],
+                default: 'payPeriodStart'
+              }
+            },
+            {
+              name: 'sortOrder',
+              in: 'query',
+              schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Payslip list',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ListPayrollPaySlipsResponse' }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Payslips'],
+          summary: 'Create draft payslip',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreatePaySlipInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created payslip' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/payroll/payslips/generate': {
+        post: {
+          tags: ['Payslips'],
+          summary: 'Generate draft payslips for a pay period',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/GeneratePayRunInput' }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Generated pay run result',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      message: { type: 'string' },
+                      data: { $ref: '#/components/schemas/PayrollPayRunGenerationResult' }
+                    },
+                    required: ['message', 'data']
+                  }
+                }
+              }
+            },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/payroll/payslips/{id}': {
+        get: {
+          tags: ['Payslips'],
+          summary: 'Get payslip by id',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/PaySlipId' }],
+          responses: {
+            '200': {
+              description: 'Payslip details',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { $ref: '#/components/schemas/PayrollPaySlip' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { $ref: '#/components/responses/NotFound' }
+          }
+        },
+        patch: {
+          tags: ['Payslips'],
+          summary: 'Update draft payslip',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/PaySlipId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UpdatePaySlipInput' }
+              }
+            }
+          },
+          responses: {
+            '200': { description: 'Updated payslip' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        },
+        delete: {
+          tags: ['Payslips'],
+          summary: 'Delete draft payslip',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/PaySlipId' }],
+          responses: {
+            '204': { description: 'Payslip deleted' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/payroll/payslips/{id}/issue': {
+        post: {
+          tags: ['Payslips'],
+          summary: 'Issue draft payslip',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/PaySlipId' }],
+          responses: {
+            '200': { description: 'Issued payslip' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/payroll/payslips/{id}/mark-paid': {
+        post: {
+          tags: ['Payslips'],
+          summary: 'Mark payslip as paid',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/PaySlipId' }],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MarkPaySlipPaidInput' }
+              }
+            }
+          },
+          responses: {
+            '200': { description: 'Payslip marked as paid' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/payroll/payslips/{id}/journal-entry': {
+        post: {
+          tags: ['Payslips'],
+          summary: 'Create linked finance journal entry',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/PaySlipId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreatePaySlipJournalEntryInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created payroll journal entry link' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/payroll/payslips/{id}/register-payment': {
+        post: {
+          tags: ['Payslips'],
+          summary: 'Register linked finance payment',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/PaySlipId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/RegisterPaySlipPaymentInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Registered payroll payment link' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
       }
     },
     components: {
@@ -1818,6 +2133,24 @@ export function createOpenApiDocument() {
         },
         ContractId: {
           name: 'contractId',
+          in: 'path',
+          required: true,
+          schema: {
+            type: 'string',
+            format: 'uuid'
+          }
+        },
+        PayrollContractId: {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: {
+            type: 'string',
+            format: 'uuid'
+          }
+        },
+        PaySlipId: {
+          name: 'id',
           in: 'path',
           required: true,
           schema: {
@@ -1891,10 +2224,11 @@ export function createOpenApiDocument() {
                 metrics: { type: 'string', example: '/metrics' },
                 modules: { type: 'string', example: '/modules' },
                 overview: { type: 'string', example: '/api/overview' },
-                assets: { type: 'string', example: '/api/assets/docs' },
-                finance: { type: 'string', example: '/api/finance/docs' },
-                employees: { type: 'string', example: '/api/employees/docs' },
-                accessPlans: { type: 'string', example: '/api/access/plans' },
+                  assets: { type: 'string', example: '/api/assets/docs' },
+                  finance: { type: 'string', example: '/api/finance/docs' },
+                  employees: { type: 'string', example: '/api/employees/docs' },
+                  payroll: { type: 'string', example: '/api/payroll/docs' },
+                  accessPlans: { type: 'string', example: '/api/access/plans' },
                 accessMe: { type: 'string', example: '/api/access/me' },
                 swagger: { type: 'string', example: '/docs' },
                 openApi: { type: 'string', example: '/openapi.json' }
@@ -2215,9 +2549,12 @@ export function createOpenApiDocument() {
                 enabled: { type: 'boolean', example: false },
                 status: {
                   type: 'string',
-                  enum: ['insufficient_modules', 'not_implemented']
+                  enum: ['insufficient_modules', 'empty', 'ready']
                 },
                 kpis: {
+                  nullable: true
+                },
+                charts: {
                   nullable: true
                 },
                 insights: {
@@ -2821,6 +3158,322 @@ export function createOpenApiDocument() {
             pagination: { $ref: '#/components/schemas/PaginationInfo' }
           },
           required: ['data', 'pagination']
+        },
+        PayrollEmployeeSummary: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            employeeNumber: { type: 'string', example: 'EMP-001' },
+            fullName: { type: 'string', example: 'Jane Doe' },
+            email: { type: 'string', format: 'email', nullable: true },
+            status: { type: 'string', example: 'active' }
+          },
+          required: ['id', 'employeeNumber', 'fullName', 'status']
+        },
+        PayrollContract: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                employeeId: { type: 'string', format: 'uuid' },
+                employee: { $ref: '#/components/schemas/PayrollEmployeeSummary' },
+                contractType: { type: 'string', example: 'full-time' },
+                status: { type: 'string', example: 'active' },
+                startDate: { type: 'string', format: 'date' },
+                endDate: { type: 'string', format: 'date', nullable: true },
+                salaryAmount: { type: 'number', example: 1500000 },
+                currency: { type: 'string', example: 'BIF' },
+                paymentFrequency: { type: 'string', example: 'monthly' }
+              },
+              required: [
+                'employeeId',
+                'employee',
+                'contractType',
+                'status',
+                'startDate',
+                'salaryAmount',
+                'currency',
+                'paymentFrequency'
+              ]
+            }
+          ]
+        },
+        PayrollPaySlipLine: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                paySlipId: { type: 'string', format: 'uuid' },
+                lineType: {
+                  type: 'string',
+                  enum: ['earning', 'deduction', 'tax', 'benefit']
+                },
+                label: { type: 'string', example: 'Base salary' },
+                amount: { type: 'number', example: 1500000 },
+                description: { type: 'string', nullable: true }
+              },
+              required: ['paySlipId', 'lineType', 'label', 'amount']
+            }
+          ]
+        },
+        PayrollLinkedTransaction: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            amount: { type: 'number', example: 1480000 },
+            transactionDate: { type: 'string', format: 'date' },
+            accountingCategory: { type: 'string', example: 'payroll' },
+            referenceNumber: { type: 'string', nullable: true },
+            description: { type: 'string', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          },
+          required: [
+            'id',
+            'amount',
+            'transactionDate',
+            'accountingCategory',
+            'createdAt',
+            'updatedAt'
+          ]
+        },
+        PayrollLinkedJournalEntry: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            entryNumber: { type: 'string', example: 'PAY-20260331-12345678' },
+            entryDate: { type: 'string', format: 'date' },
+            status: { type: 'string', enum: ['draft', 'posted'] },
+            postedAt: { type: 'string', format: 'date-time', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          },
+          required: ['id', 'entryNumber', 'entryDate', 'status', 'createdAt', 'updatedAt']
+        },
+        PayrollPaySlip: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                employeeId: { type: 'string', format: 'uuid' },
+                contractId: { type: 'string', format: 'uuid' },
+                employee: { $ref: '#/components/schemas/PayrollEmployeeSummary' },
+                contract: { $ref: '#/components/schemas/PayrollContract' },
+                payPeriodStart: { type: 'string', format: 'date' },
+                payPeriodEnd: { type: 'string', format: 'date' },
+                paymentDate: { type: 'string', format: 'date', nullable: true },
+                issuedAt: { type: 'string', format: 'date-time', nullable: true },
+                grossAmount: { type: 'number', example: 1600000 },
+                totalDeductions: { type: 'number', example: 120000 },
+                netAmount: { type: 'number', example: 1480000 },
+                currency: { type: 'string', example: 'BIF' },
+                status: {
+                  type: 'string',
+                  enum: ['draft', 'issued', 'paid', 'cancelled']
+                },
+                notes: { type: 'string', nullable: true },
+                lines: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/PayrollPaySlipLine' }
+                },
+                linkedTransactionsCount: { type: 'integer', example: 0 },
+                linkedJournalLinesCount: { type: 'integer', example: 0 },
+                linkedTransactions: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/PayrollLinkedTransaction' }
+                },
+                linkedJournalEntries: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/PayrollLinkedJournalEntry' }
+                }
+              },
+              required: [
+                'employeeId',
+                'contractId',
+                'employee',
+                'contract',
+                'payPeriodStart',
+                'payPeriodEnd',
+                'grossAmount',
+                'totalDeductions',
+                'netAmount',
+                'currency',
+                'status',
+                'lines',
+                'linkedTransactionsCount',
+                'linkedJournalLinesCount'
+              ]
+            }
+          ]
+        },
+        ListPayrollContractsResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PayrollContract' }
+            },
+            pagination: { $ref: '#/components/schemas/PaginationInfo' }
+          },
+          required: ['data', 'pagination']
+        },
+        ListPayrollPaySlipsResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PayrollPaySlip' }
+            },
+            pagination: { $ref: '#/components/schemas/PaginationInfo' }
+          },
+          required: ['data', 'pagination']
+        },
+        CreatePaySlipLineInput: {
+          type: 'object',
+          properties: {
+            lineType: {
+              type: 'string',
+              enum: ['earning', 'deduction', 'tax', 'benefit']
+            },
+            label: { type: 'string', example: 'Base salary' },
+            amount: { type: 'number', example: 1500000 },
+            description: { type: 'string', nullable: true }
+          },
+          required: ['lineType', 'label', 'amount']
+        },
+        CreatePaySlipInput: {
+          type: 'object',
+          properties: {
+            employeeId: { type: 'string', format: 'uuid' },
+            contractId: { type: 'string', format: 'uuid' },
+            payPeriodStart: { type: 'string', format: 'date' },
+            payPeriodEnd: { type: 'string', format: 'date' },
+            paymentDate: { type: 'string', format: 'date', nullable: true },
+            currency: { type: 'string', example: 'BIF' },
+            notes: { type: 'string', nullable: true },
+            lines: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CreatePaySlipLineInput' }
+            }
+          },
+          required: ['employeeId', 'contractId', 'payPeriodStart', 'payPeriodEnd', 'lines']
+        },
+        GeneratePayRunInput: {
+          type: 'object',
+          properties: {
+            payPeriodStart: { type: 'string', format: 'date' },
+            payPeriodEnd: { type: 'string', format: 'date' },
+            paymentDate: { type: 'string', format: 'date', nullable: true },
+            contractIds: {
+              type: 'array',
+              items: { type: 'string', format: 'uuid' }
+            },
+            earningLabel: { type: 'string', example: 'Base salary', default: 'Base salary' },
+            notes: { type: 'string', nullable: true },
+            skipExisting: { type: 'boolean', default: true }
+          },
+          required: ['payPeriodStart', 'payPeriodEnd']
+        },
+        UpdatePaySlipInput: {
+          type: 'object',
+          properties: {
+            payPeriodStart: { type: 'string', format: 'date' },
+            payPeriodEnd: { type: 'string', format: 'date' },
+            paymentDate: { type: 'string', format: 'date', nullable: true },
+            currency: { type: 'string', example: 'BIF' },
+            notes: { type: 'string', nullable: true },
+            lines: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CreatePaySlipLineInput' }
+            }
+          }
+        },
+        MarkPaySlipPaidInput: {
+          type: 'object',
+          properties: {
+            paymentDate: { type: 'string', format: 'date', nullable: true }
+          }
+        },
+        CreatePaySlipJournalEntryInput: {
+          type: 'object',
+          properties: {
+            expenseAccountId: { type: 'string', format: 'uuid' },
+            payrollPayableAccountId: { type: 'string', format: 'uuid' },
+            deductionsPayableAccountId: { type: 'string', format: 'uuid', nullable: true },
+            entryDate: { type: 'string', format: 'date', nullable: true },
+            entryNumber: { type: 'string', nullable: true },
+            description: { type: 'string', nullable: true },
+            status: { type: 'string', enum: ['draft', 'posted'], default: 'draft' },
+            postedBy: { type: 'string', format: 'uuid', nullable: true }
+          },
+          required: ['expenseAccountId', 'payrollPayableAccountId']
+        },
+        RegisterPaySlipPaymentInput: {
+          type: 'object',
+          properties: {
+            transactionTypeId: { type: 'string', format: 'uuid' },
+            paymentMethodId: { type: 'string', format: 'uuid' },
+            transactionDate: { type: 'string', format: 'date', nullable: true },
+            referenceNumber: { type: 'string', nullable: true },
+            description: { type: 'string', nullable: true },
+            markAsPaid: { type: 'boolean', default: true }
+          },
+          required: ['transactionTypeId', 'paymentMethodId']
+        },
+        PayrollJournalEntryLink: {
+          type: 'object',
+          properties: {
+            paySlip: { $ref: '#/components/schemas/PayrollPaySlip' },
+            journalEntry: { $ref: '#/components/schemas/PayrollLinkedJournalEntry' }
+          },
+          required: ['paySlip', 'journalEntry']
+        },
+        PayrollPaymentRegistration: {
+          type: 'object',
+          properties: {
+            paySlip: { $ref: '#/components/schemas/PayrollPaySlip' },
+            transaction: { $ref: '#/components/schemas/PayrollLinkedTransaction' }
+          },
+          required: ['paySlip', 'transaction']
+        },
+        PayrollPayRunGenerationSkippedItem: {
+          type: 'object',
+          properties: {
+            contractId: { type: 'string', format: 'uuid' },
+            employeeId: { type: 'string', format: 'uuid' },
+            employeeName: { type: 'string' },
+            reason: { type: 'string', example: 'payslip_already_exists' }
+          },
+          required: ['contractId', 'employeeId', 'employeeName', 'reason']
+        },
+        PayrollPayRunGenerationResult: {
+          type: 'object',
+          properties: {
+            payPeriodStart: { type: 'string', format: 'date' },
+            payPeriodEnd: { type: 'string', format: 'date' },
+            paymentDate: { type: 'string', format: 'date', nullable: true },
+            createdCount: { type: 'integer', example: 12 },
+            skippedCount: { type: 'integer', example: 1 },
+            created: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PayrollPaySlip' }
+            },
+            skipped: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PayrollPayRunGenerationSkippedItem' }
+            }
+          },
+          required: [
+            'payPeriodStart',
+            'payPeriodEnd',
+            'createdCount',
+            'skippedCount',
+            'created',
+            'skipped'
+          ]
         },
         AssetCategory: {
           allOf: [

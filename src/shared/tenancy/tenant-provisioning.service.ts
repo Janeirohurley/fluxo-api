@@ -140,8 +140,11 @@ export class TenantProvisioningService {
         ['1000', 'Cash and Cash Equivalents', 'asset'],
         ['1100', 'Accounts Receivable', 'asset'],
         ['2000', 'Accounts Payable', 'liability'],
+        ['2100', 'Payroll Payable', 'liability'],
+        ['2200', 'Payroll Deductions Payable', 'liability'],
         ['4000', 'Operating Revenue', 'revenue'],
-        ['5000', 'Operating Expense', 'expense']
+        ['5000', 'Operating Expense', 'expense'],
+        ['5100', 'Payroll Expense', 'expense']
       ] as const;
 
       for (const [code, name, accountType] of accountingAccounts) {

@@ -618,8 +618,16 @@ export class InMemoryFinanceRepository implements FinanceRepository {
       { code: '1000', name: 'Cash and Cash Equivalents', accountType: 'asset', isActive: true },
       { code: '1100', name: 'Accounts Receivable', accountType: 'asset', isActive: true },
       { code: '2000', name: 'Accounts Payable', accountType: 'liability', isActive: true },
+      { code: '2100', name: 'Payroll Payable', accountType: 'liability', isActive: true },
+      {
+        code: '2200',
+        name: 'Payroll Deductions Payable',
+        accountType: 'liability',
+        isActive: true
+      },
       { code: '4000', name: 'Operating Revenue', accountType: 'revenue', isActive: true },
-      { code: '5000', name: 'Operating Expense', accountType: 'expense', isActive: true }
+      { code: '5000', name: 'Operating Expense', accountType: 'expense', isActive: true },
+      { code: '5100', name: 'Payroll Expense', accountType: 'expense', isActive: true }
     ] as const) {
       const accountingAccount = this.createTimestampedEntity(account);
       this.accountingAccounts.set(accountingAccount.id, accountingAccount);

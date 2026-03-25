@@ -73,8 +73,9 @@ export type OverviewResponse = {
   modules: Record<OverviewModuleName, OverviewModuleResult>;
   crossModule: {
     enabled: boolean;
-    status: 'insufficient_modules' | 'not_implemented';
+    status: 'insufficient_modules' | 'empty' | 'ready';
     kpis: Record<string, unknown> | null;
+    charts: Record<string, unknown> | null;
     insights: OverviewInsight[];
   };
 };
