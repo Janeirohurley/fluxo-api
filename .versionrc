@@ -1,0 +1,15 @@
+{
+  "header": "# 📜 Journal des modifications (Changelog)\n\nCe fichier répertorie toutes les versions et changements notables apportés au projet.",
+  "types": [
+    {"type": "feat", "section": "🚀 Nouvelles Fonctionnalités"},
+    {"type": "fix", "section": "🐛 Corrections de Bugs"},
+    {"type": "chore", "hidden": true},
+    {"type": "docs", "section": "📚 Documentation"},
+    {"type": "style", "hidden": true},
+    {"type": "refactor", "section": "⚙️ Refactorisation du Code"},
+    {"type": "perf", "section": "⚡ Performance"},
+    {"type": "test", "hidden": true}
+  ],
+  "commitUrlFormat": "https://github.com/ton-utilisateur/{{repository}}/commit/{{hash}}",
+  "compareUrlFormat": "https://github.com/ton-utilisateur/{{repository}}/compare/{{previousTag}}...{{currentTag}}"
+}

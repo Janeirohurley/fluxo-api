@@ -16,7 +16,10 @@
     "db:restore": "tsx scripts/db-restore.ts",
     "access:plans": "tsx scripts/list-access-plans.ts",
     "access:key:generate": "tsx scripts/generate-access-key.ts",
-    "test": "node --import tsx --test --test-concurrency=1 --experimental-test-isolation=none src/shared/http/request-case.test.ts src/shared/http/response-case.test.ts src/shared/http/rate-limit.test.ts src/shared/observability/request-metrics.test.ts src/shared/pagination/pagination.test.ts src/modules/assets/assets.schema.test.ts src/modules/assets/assets.service.test.ts src/modules/finance/finance.schema.test.ts src/modules/finance/finance.service.test.ts src/modules/finance/finance.http.test.ts src/modules/employees/employees.schema.test.ts src/modules/employees/employees.service.test.ts src/modules/payroll/payroll.schema.test.ts src/modules/payroll/payroll.service.test.ts src/overview/providers/assets-overview.provider.test.ts src/overview/providers/employees-overview.provider.test.ts src/overview/providers/finance-overview.provider.test.ts src/overview/providers/payroll-overview.provider.test.ts src/overview/overview.service.test.ts"
+    "test": "node --import tsx --test --test-concurrency=1 --experimental-test-isolation=none src/shared/http/request-case.test.ts src/shared/http/response-case.test.ts src/shared/http/rate-limit.test.ts src/shared/observability/request-metrics.test.ts src/shared/pagination/pagination.test.ts src/modules/assets/assets.schema.test.ts src/modules/assets/assets.service.test.ts src/modules/finance/finance.schema.test.ts src/modules/finance/finance.service.test.ts src/modules/finance/finance.http.test.ts src/modules/employees/employees.schema.test.ts src/modules/employees/employees.service.test.ts src/modules/payroll/payroll.schema.test.ts src/modules/payroll/payroll.service.test.ts src/overview/providers/assets-overview.provider.test.ts src/overview/providers/employees-overview.provider.test.ts src/overview/providers/finance-overview.provider.test.ts src/overview/providers/payroll-overview.provider.test.ts src/overview/overview.service.test.ts",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:patch": "standard-version --release-as patch"
   },
   "keywords": [],
   "author": "",
@@ -41,6 +44,7 @@
     "@types/pg": "^8.15.5",
     "@types/swagger-ui-express": "^4.1.8",
     "prisma": "^7.5.0",
+    "standard-version": "^9.5.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
