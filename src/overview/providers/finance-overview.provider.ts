@@ -1,11 +1,10 @@
-import { Prisma } from '@prisma/client';
-
 import {
   type OverviewInsight,
   type OverviewModuleResult,
   type OverviewProvider,
   type OverviewProviderContext
 } from '../overview.types';
+import { type TenantDecimal } from '../../shared/tenant-prisma';
 
 type FinanceOverviewMetrics = {
   totalTransactions: number;
@@ -31,7 +30,7 @@ type FinanceOverviewMetrics = {
   reconciliationOverdueDays: number | null;
 };
 
-function toNumber(value: Prisma.Decimal | number | null | undefined) {
+function toNumber(value: TenantDecimal | number | null | undefined) {
   if (typeof value === 'number') {
     return value;
   }

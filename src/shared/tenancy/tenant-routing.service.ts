@@ -1,6 +1,7 @@
 import { type PrismaClient } from '@prisma/client';
 
 import { HttpError } from '../http-error';
+import { type TenantPrismaClientLike } from '../tenant-prisma';
 import { TenantPrismaManager } from './tenant-prisma-manager';
 
 export class TenantRoutingService {
@@ -27,7 +28,9 @@ export class TenantRoutingService {
       });
     }
 
-    const prisma = await this.tenantPrismaManager.getClient(database.connectionString);
+    const prisma: TenantPrismaClientLike = await this.tenantPrismaManager.getClient(
+      database.connectionString
+    );
 
     return {
       prisma,

@@ -1,10 +1,10 @@
 import { type NextFunction, type Request, type Response } from 'express';
 
-import { type PrismaClientLike } from '../prisma';
+import { type TenantPrismaClientLike } from '../tenant-prisma';
 import { TenantAuditService } from './tenant-audit.service';
 
 export function createTenantAuditMiddleware(
-  resolvePrisma?: (req: Request, res: Response) => PrismaClientLike | null
+  resolvePrisma?: (req: Request, res: Response) => TenantPrismaClientLike | null
 ) {
   return (req: Request, res: Response, next: NextFunction) => {
     const tenantPrisma = resolvePrisma ? resolvePrisma(req, res) : (res.locals.tenantPrisma ?? null);

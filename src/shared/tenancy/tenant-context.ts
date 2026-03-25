@@ -2,10 +2,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { type AccessSession } from '../access/access.types';
 import { HttpError } from '../http-error';
-import { type PrismaClientLike } from '../prisma';
+import { type TenantPrismaClientLike } from '../tenant-prisma';
 
 type TenantRequestContext = {
-  tenantPrisma: PrismaClientLike | null;
+  tenantPrisma: TenantPrismaClientLike | null;
   accessSession: AccessSession | null;
   databaseName: string | null;
 };

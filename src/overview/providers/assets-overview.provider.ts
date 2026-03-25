@@ -1,5 +1,3 @@
-import { Prisma } from '@prisma/client';
-
 import {
   type OverviewChartPoint,
   type OverviewInsight,
@@ -7,6 +5,7 @@ import {
   type OverviewProvider,
   type OverviewProviderContext
 } from '../overview.types';
+import { type TenantDecimal } from '../../shared/tenant-prisma';
 
 type AssetOverviewMetrics = {
   totalAssets: number;
@@ -26,7 +25,46 @@ type AssetOverviewMetrics = {
   maintenanceToAssetValueRatio: number | null;
 };
 
-function toNumber(value: Prisma.Decimal | null | undefined) {
+type BasicAssetRow = {
+  id: string;
+  name: string;
+  inventoryCode: string;
+  createdAt: Date;
+  statusId: string;
+  categoryId: string;
+};
+
+type CurrentAssignmentRow = {
+  assetId: string;
+  locationId: string;
+};
+
+type MaintainedAssetRow = {
+  assetId: string;
+};
+
+type FinanceRecordRow = {
+  assetId: string;
+  acquisitionDate: Date;
+  purchaseValue: TenantDecimal;
+  residualValue: TenantDecimal | null;
+  estimatedLifeYears: number;
+};
+
+type MaintenanceRecordRow = {
+  assetId: string;
+  interventionCost: TenantDecimal | null;
+  createdAt: Date;
+};
+
+type HighMaintenanceAsset = {
+  assetId: string;
+  assetName: string;
+  maintenanceCost: number;
+  purchaseValue: number;
+};
+
+function toNumber(value: TenantDecimal | null | undefined) {
   return value?.toNumber() ?? 0;
 }
 
@@ -303,33 +341,35 @@ export class AssetsOverviewProvider implements OverviewProvider {
       })
     ]);
 
-    const statusCountById = assetsBasic.reduce<Map<string, number>>((result, asset) => {
+    const statusCountById = assetsBasic.reduce<Map<string, number>>((result, asset: BasicAssetRow) => {
       result.set(asset.statusId, (result.get(asset.statusId) ?? 0) + 1);
       return result;
     }, new Map());
-    const categoryCountById = assetsBasic.reduce<Map<string, number>>((result, asset) => {
+    const categoryCountById = assetsBasic.reduce<Map<string, number>>((result, asset: BasicAssetRow) => {
       result.set(asset.categoryId, (result.get(asset.categoryId) ?? 0) + 1);
       return result;
     }, new Map());
 
-    const byStatus: OverviewChartPoint[] = statusDefinitions.map((status) => ({
+    const byStatus: OverviewChartPoint[] = statusDefinitions.map((status: { id: string; name: string }) => ({
       key: status.id,
       label: status.name,
       value: statusCountById.get(status.id) ?? 0
     }));
     const byCategory: OverviewChartPoint[] = categoryDefinitions
-      .map((category) => ({
+      .map((category: { id: string; name: string }) => ({
         key: category.id,
         label: category.name,
         value: categoryCountById.get(category.id) ?? 0
       }))
-      .filter((item) => item.value > 0);
-    const byLocation: OverviewChartPoint[] = Array.from(
-      currentAssignments.reduce<Map<string, number>>((result, assignment) => {
-        result.set(assignment.locationId, (result.get(assignment.locationId) ?? 0) + 1);
-        return result;
-      }, new Map())
-    ).map(([locationId, value]) => ({
+      .filter((item: OverviewChartPoint) => item.value > 0);
+    const byLocation: OverviewChartPoint[] = (
+      Array.from(
+        currentAssignments.reduce<Map<string, number>>((result, assignment: CurrentAssignmentRow) => {
+          result.set(assignment.locationId, (result.get(assignment.locationId) ?? 0) + 1);
+          return result;
+        }, new Map())
+      ) as Array<[string, number]>
+    ).map(([locationId, value]: [string, number]) => ({
       key: locationId,
       label: locationId,
       value
@@ -352,13 +392,13 @@ export class AssetsOverviewProvider implements OverviewProvider {
     const maintainedAssets = maintainedAssetRows.length;
     const averageMaintenanceCost =
       maintainedAssets > 0 ? totalMaintenanceCost / maintainedAssets : 0;
-    const maintenanceCostByAsset = maintenanceRecords.reduce<Map<string, number>>((result, record) => {
+    const maintenanceCostByAsset = maintenanceRecords.reduce<Map<string, number>>((result, record: MaintenanceRecordRow) => {
       result.set(record.assetId, (result.get(record.assetId) ?? 0) + toNumber(record.interventionCost));
       return result;
     }, new Map());
     const financeByAsset = financeRecords.reduce<
       Map<string, { purchaseValue: number; residualValue: number; estimatedLifeYears: number; acquisitionDate: Date }>
-    >((result, record) => {
+    >((result, record: FinanceRecordRow) => {
       result.set(record.assetId, {
         purchaseValue: toNumber(record.purchaseValue),
         residualValue: toNumber(record.residualValue),
@@ -367,13 +407,15 @@ export class AssetsOverviewProvider implements OverviewProvider {
       });
       return result;
     }, new Map());
-    const assetNameById = assetsBasic.reduce<Map<string, string>>((result, asset) => {
+    const assetNameById = assetsBasic.reduce<Map<string, string>>((result, asset: BasicAssetRow) => {
       result.set(asset.id, asset.name);
       return result;
     }, new Map());
 
-    const highMaintenanceAssets = Array.from(maintenanceCostByAsset.entries())
-      .map(([assetId, maintenanceCost]) => {
+    const highMaintenanceAssets: HighMaintenanceAsset[] = (Array.from(
+      maintenanceCostByAsset.entries()
+    ) as Array<[string, number]>)
+      .map(([assetId, maintenanceCost]: [string, number]) => {
         const finance = financeByAsset.get(assetId);
 
         return {
@@ -383,21 +425,26 @@ export class AssetsOverviewProvider implements OverviewProvider {
           purchaseValue: finance?.purchaseValue ?? 0
         };
       })
-      .filter((entry) => entry.purchaseValue > 0 && entry.maintenanceCost >= entry.purchaseValue)
-      .sort((left, right) => right.maintenanceCost - left.maintenanceCost);
+      .filter(
+        (entry: HighMaintenanceAsset) =>
+          entry.purchaseValue > 0 && entry.maintenanceCost >= entry.purchaseValue
+      )
+      .sort((left: HighMaintenanceAsset, right: HighMaintenanceAsset) => right.maintenanceCost - left.maintenanceCost);
     const criticalMaintenanceCount = new Set([
       ...assetsBasic
-        .filter((asset) => {
-          const statusName = statusDefinitions.find((status) => status.id === asset.statusId)?.name;
+        .filter((asset: BasicAssetRow) => {
+          const statusName = statusDefinitions.find(
+            (status: { id: string; name: string }) => status.id === asset.statusId
+          )?.name;
           return statusName?.toLowerCase() === 'maintenance';
         })
-        .map((asset) => asset.id),
-      ...highMaintenanceAssets.map((asset) => asset.assetId)
+        .map((asset: BasicAssetRow) => asset.id),
+      ...highMaintenanceAssets.map((asset: HighMaintenanceAsset) => asset.assetId)
     ]).size;
 
     const acquisitionTrend = buildRollingMonthSeries(-11, 12).map((monthStart) => {
       const key = formatMonthKey(monthStart);
-      const monthTotal = financeRecords.reduce((sum, record) => {
+      const monthTotal = financeRecords.reduce((sum: number, record: FinanceRecordRow) => {
         return formatMonthKey(record.acquisitionDate) === key
           ? sum + toNumber(record.purchaseValue)
           : sum;
@@ -410,7 +457,7 @@ export class AssetsOverviewProvider implements OverviewProvider {
       };
     });
 
-    const ageDistributionMap = financeRecords.reduce<Map<string, number>>((result, record) => {
+    const ageDistributionMap = financeRecords.reduce<Map<string, number>>((result, record: FinanceRecordRow) => {
       const lifeMonths = Math.max(record.estimatedLifeYears * 12, 1);
       const ageMonths = Math.max(monthDifference(record.acquisitionDate, new Date()), 0);
       const lifeRatio = ageMonths / lifeMonths;
@@ -424,8 +471,10 @@ export class AssetsOverviewProvider implements OverviewProvider {
     if (unknownAgeAssets > 0) {
       ageDistributionMap.set('unknown', unknownAgeAssets);
     }
-    const ageDistribution: OverviewChartPoint[] = Array.from(ageDistributionMap.entries()).map(
-      ([bucket, value]) => ({
+    const ageDistribution: OverviewChartPoint[] = (Array.from(
+      ageDistributionMap.entries()
+    ) as Array<[string, number]>).map(
+      ([bucket, value]: [string, number]) => ({
         key: bucket,
         label: bucket,
         value
@@ -433,7 +482,7 @@ export class AssetsOverviewProvider implements OverviewProvider {
     );
 
     const depreciationForecast = buildRollingMonthSeries(0, 12).map((monthStart) => {
-      const value = financeRecords.reduce((sum, record) => {
+      const value = financeRecords.reduce((sum: number, record: FinanceRecordRow) => {
         const purchaseValue = toNumber(record.purchaseValue);
         const residualValue = toNumber(record.residualValue);
         const depreciationBase = Math.max(purchaseValue - residualValue, 0);
@@ -459,9 +508,9 @@ export class AssetsOverviewProvider implements OverviewProvider {
     });
 
     const recentAssets = [...assetsBasic]
-      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+      .sort((left: BasicAssetRow, right: BasicAssetRow) => right.createdAt.getTime() - left.createdAt.getTime())
       .slice(0, 5)
-      .map((asset) => ({
+      .map((asset: BasicAssetRow) => ({
         id: asset.id,
         name: asset.name,
         inventoryCode: asset.inventoryCode,

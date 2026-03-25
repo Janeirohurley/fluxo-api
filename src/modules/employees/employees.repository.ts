@@ -1,9 +1,14 @@
 import crypto from 'node:crypto';
-import { Prisma } from '@prisma/client';
 
 import { HttpError } from '../../shared/http-error';
 import { slicePage } from '../../shared/pagination';
-import { type PrismaClientLike } from '../../shared/prisma';
+import {
+  type TenantDecimal,
+  type TenantEmployeeAssignmentWhereInput,
+  type TenantEmployeeWhereInput,
+  TenantPrisma,
+  type TenantPrismaClientLike
+} from '../../shared/tenant-prisma';
 import {
   type CreateEmployeeAssignmentInput,
   type CreateEmployeeContractInput,
@@ -92,7 +97,7 @@ function mapReference(entity: {
   };
 }
 
-function toNumber(value: Prisma.Decimal | number) {
+function toNumber(value: TenantDecimal | number) {
   return typeof value === 'number' ? value : value.toNumber();
 }
 
@@ -472,7 +477,11 @@ export class InMemoryEmployeesRepository implements EmployeesRepository {
 }
 
 export class PrismaEmployeesRepository implements EmployeesRepository {
-  constructor(private readonly prismaResolver: PrismaClientLike | (() => PrismaClientLike | null)) {}
+  constructor(
+    private readonly prismaResolver:
+      | TenantPrismaClientLike
+      | (() => TenantPrismaClientLike | null)
+  ) {}
 
   private get prisma() {
     const resolved =
@@ -576,9 +585,9 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
     const currentAssignmentWhere = {
       startDate: { lte: today },
       OR: [{ endDate: null }, { endDate: { gte: today } }]
-    } satisfies Prisma.EmployeeAssignmentWhereInput;
+    } satisfies TenantEmployeeAssignmentWhereInput;
 
-    const where: Prisma.EmployeeWhereInput = {
+    const where: TenantEmployeeWhereInput = {
       ...(input.status ? { status: input.status } : {}),
       ...(input.search
         ? {
@@ -752,8 +761,8 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
       });
     } catch (error) {
       if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
+        error instanceof TenantPrisma.PrismaClientKnownRequestError &&
+        (error as InstanceType<typeof TenantPrisma.PrismaClientKnownRequestError>).code === 'P2025'
       ) {
         throw new HttpError(404, `Employee with id "${id}" not found`);
       }
@@ -939,11 +948,13 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
   }
 
   private mapPrismaError(error: unknown, entityLabel: string) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
+    if (error instanceof TenantPrisma.PrismaClientKnownRequestError) {
+      const knownError = error as InstanceType<typeof TenantPrisma.PrismaClientKnownRequestError>;
+
+      if (knownError.code === 'P2002') {
         return new HttpError(409, `${entityLabel} already exists`);
       }
-      if (error.code === 'P2003') {
+      if (knownError.code === 'P2003') {
         return new HttpError(409, `${entityLabel} references a record that does not exist`);
       }
     }

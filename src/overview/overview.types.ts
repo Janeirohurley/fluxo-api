@@ -1,5 +1,5 @@
-import { type PrismaClientLike } from '../shared/prisma';
 import { type AccessSession } from '../shared/access/access.types';
+import { type TenantPrismaClientLike } from '../shared/tenant-prisma';
 
 export type OverviewModuleName = 'assets' | 'finance' | 'employees' | 'payroll';
 export type OverviewModuleStatus =
@@ -35,7 +35,7 @@ export type OverviewModuleResult = {
 };
 
 export type OverviewProviderContext = {
-  prisma: PrismaClientLike | null;
+  prisma: TenantPrismaClientLike | null;
   accessSession: AccessSession;
   mountedModules: OverviewModuleName[];
   generatedAt: string;

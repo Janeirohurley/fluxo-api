@@ -1,12 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '@prisma/client';
 import { type Request, type Response } from 'express';
 
-import { type PrismaClientLike } from '../prisma';
+import { TenantPrisma, type TenantPrismaClientLike } from '../tenant-prisma';
 import { readAuditActor, readAuditModuleName, sanitizeAuditValue } from './audit-helpers';
 
 export class TenantAuditService {
-  constructor(private readonly prisma: PrismaClientLike) {}
+  constructor(private readonly prisma: TenantPrismaClientLike) {}
 
   async recordHttpMutation(req: Request, res: Response) {
     const method = req.method.toUpperCase();
@@ -30,7 +29,7 @@ export class TenantAuditService {
     });
 
     await this.prisma.$executeRaw(
-      Prisma.sql`
+      TenantPrisma.sql`
         INSERT INTO tenant_audit_logs (
           id,
           request_id,

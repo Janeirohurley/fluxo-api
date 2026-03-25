@@ -1,7 +1,4 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
-
 import { HttpError } from '../../shared/http-error';
-import { type PrismaClientLike } from '../../shared/prisma';
 import {
   type CreateAssetAssignmentInput,
   type CreateAssetCategoryInput,
@@ -25,6 +22,12 @@ import {
   type MaintenanceLog
 } from './assets.types';
 import { slicePage } from '../../shared/pagination';
+import {
+  type TenantAssetWhereInput,
+  type TenantDecimal,
+  TenantPrisma,
+  type TenantPrismaClientLike
+} from '../../shared/tenant-prisma';
 
 export interface AssetsRepository {
   listAssets(input: ListAssetsQuery): Promise<AssetListQueryResult>;
@@ -351,7 +354,11 @@ export class InMemoryAssetsRepository implements AssetsRepository {
 }
 
 export class PrismaAssetsRepository implements AssetsRepository {
-  constructor(private readonly prismaResolver: PrismaClient | (() => PrismaClientLike | null)) {}
+  constructor(
+    private readonly prismaResolver:
+      | TenantPrismaClientLike
+      | (() => TenantPrismaClientLike | null)
+  ) {}
 
   private get prisma() {
     const prisma =
@@ -645,15 +652,15 @@ export class PrismaAssetsRepository implements AssetsRepository {
     return this.toMaintenanceLog(maintenanceLog);
   }
 
-  private buildAssetWhereInput(input: ListAssetsQuery): Prisma.AssetWhereInput {
+  private buildAssetWhereInput(input: ListAssetsQuery): TenantAssetWhereInput {
     const search = input.search
       ? {
           OR: [
-            { inventoryCode: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
-            { name: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
-            { brand: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
-            { model: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
-            { serialNumber: { contains: input.search, mode: Prisma.QueryMode.insensitive } }
+            { inventoryCode: { contains: input.search, mode: 'insensitive' as const } },
+            { name: { contains: input.search, mode: 'insensitive' as const } },
+            { brand: { contains: input.search, mode: 'insensitive' as const } },
+            { model: { contains: input.search, mode: 'insensitive' as const } },
+            { serialNumber: { contains: input.search, mode: 'insensitive' as const } }
           ]
         }
       : undefined;
@@ -672,17 +679,19 @@ export class PrismaAssetsRepository implements AssetsRepository {
       uniqueMessage?: string;
     }
   ): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025' && options.notFoundMessage) {
+    if (error instanceof TenantPrisma.PrismaClientKnownRequestError) {
+      const knownError = error as InstanceType<typeof TenantPrisma.PrismaClientKnownRequestError>;
+
+      if (knownError.code === 'P2025' && options.notFoundMessage) {
         throw new HttpError(404, options.notFoundMessage);
       }
 
-      if (error.code === 'P2002') {
+      if (knownError.code === 'P2002') {
         throw new HttpError(
           409,
           options.uniqueMessage ?? 'A resource with the same unique value already exists',
           {
-            target: error.meta?.target ?? null
+            target: knownError.meta?.target ?? null
           }
         );
       }
@@ -762,9 +771,9 @@ export class PrismaAssetsRepository implements AssetsRepository {
   private toAssetFinanceData(financeData: {
     assetId: string;
     acquisitionDate: Date;
-    purchaseValue: Prisma.Decimal;
+    purchaseValue: TenantDecimal;
     estimatedLifeYears: number;
-    residualValue: Prisma.Decimal | null;
+    residualValue: TenantDecimal | null;
     createdAt: Date;
     updatedAt: Date;
   }): AssetFinanceData {
@@ -806,7 +815,7 @@ export class PrismaAssetsRepository implements AssetsRepository {
     assetId: string;
     interventionTypeId: string;
     description: string | null;
-    interventionCost: Prisma.Decimal | null;
+    interventionCost: TenantDecimal | null;
     provider: string | null;
     createdAt: Date;
     updatedAt: Date;

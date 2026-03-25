@@ -1,8 +1,10 @@
-import { Prisma } from '@prisma/client';
-
 import { HttpError } from '../../shared/http-error';
 import { slicePage } from '../../shared/pagination';
-import { type PrismaClientLike } from '../../shared/prisma';
+import {
+  type TenantDecimal,
+  TenantPrisma,
+  type TenantPrismaClientLike
+} from '../../shared/tenant-prisma';
 import {
   type CloseReconciliationInput,
   type CreateAccountingAccountInput,
@@ -626,7 +628,11 @@ export class InMemoryFinanceRepository implements FinanceRepository {
 }
 
 export class PrismaFinanceRepository implements FinanceRepository {
-  constructor(private readonly prismaResolver: PrismaClientLike | (() => PrismaClientLike | null)) {}
+  constructor(
+    private readonly prismaResolver:
+      | TenantPrismaClientLike
+      | (() => TenantPrismaClientLike | null)
+  ) {}
 
   private get prisma() {
     const prisma =
@@ -1131,9 +1137,24 @@ export class PrismaFinanceRepository implements FinanceRepository {
     const search = input.search
       ? {
           OR: [
-            { accountingCategory: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
-            { referenceNumber: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
-            { description: { contains: input.search, mode: Prisma.QueryMode.insensitive } }
+            {
+              accountingCategory: {
+                contains: input.search,
+                mode: 'insensitive' as const
+              }
+            },
+            {
+              referenceNumber: {
+                contains: input.search,
+                mode: 'insensitive' as const
+              }
+            },
+            {
+              description: {
+                contains: input.search,
+                mode: 'insensitive' as const
+              }
+            }
           ]
         }
       : undefined;
@@ -1159,8 +1180,8 @@ export class PrismaFinanceRepository implements FinanceRepository {
     const search = input.search
       ? {
           OR: [
-            { entryNumber: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
-            { description: { contains: input.search, mode: Prisma.QueryMode.insensitive } }
+            { entryNumber: { contains: input.search, mode: 'insensitive' as const } },
+            { description: { contains: input.search, mode: 'insensitive' as const } }
           ]
         }
       : undefined;
@@ -1191,25 +1212,31 @@ export class PrismaFinanceRepository implements FinanceRepository {
       relationMessage?: string;
     }
   ): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025' && options.notFoundMessage) {
+    if (error instanceof TenantPrisma.PrismaClientKnownRequestError) {
+      const knownError = error as InstanceType<typeof TenantPrisma.PrismaClientKnownRequestError>;
+
+      if (knownError.code === 'P2025' && options.notFoundMessage) {
         throw new HttpError(404, options.notFoundMessage);
       }
 
-      if (error.code === 'P2002') {
+      if (knownError.code === 'P2002') {
         throw new HttpError(
           409,
           options.uniqueMessage ?? 'A resource with the same unique value already exists',
           {
-            target: error.meta?.target ?? null
+            target: knownError.meta?.target ?? null
           }
         );
       }
 
-      if (error.code === 'P2003') {
-        throw new HttpError(409, options.relationMessage ?? 'A related resource reference is invalid', {
-          target: error.meta?.field_name ?? null
-        });
+      if (knownError.code === 'P2003') {
+        throw new HttpError(
+          409,
+          options.relationMessage ?? 'A related resource reference is invalid',
+          {
+            target: knownError.meta?.field_name ?? null
+          }
+        );
       }
     }
 
@@ -1268,7 +1295,7 @@ export class PrismaFinanceRepository implements FinanceRepository {
     id: string;
     transactionTypeId: string;
     accountingCategory: string;
-    amount: Prisma.Decimal;
+    amount: TenantDecimal;
     paymentMethodId: string;
     referenceNumber: string | null;
     transactionDate: Date;
@@ -1330,8 +1357,8 @@ export class PrismaFinanceRepository implements FinanceRepository {
     id: string;
     journalEntryId: string;
     accountId: string;
-    debitAmount: Prisma.Decimal;
-    creditAmount: Prisma.Decimal;
+    debitAmount: TenantDecimal;
+    creditAmount: TenantDecimal;
     description: string | null;
     employeeId: string | null;
     assetId: string | null;
@@ -1362,8 +1389,8 @@ export class PrismaFinanceRepository implements FinanceRepository {
     accountId: string;
     statementStartDate: Date;
     statementEndDate: Date;
-    statementBalance: Prisma.Decimal;
-    bookBalance: Prisma.Decimal;
+    statementBalance: TenantDecimal;
+    bookBalance: TenantDecimal;
     status: string;
     closedAt: Date | null;
     closedBy: string | null;
