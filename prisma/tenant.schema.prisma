@@ -263,6 +263,97 @@ model ReconciliationItem {
   @@map("reconciliation_items")
 }
 
+model EmployeeRole {
+  id          String               @id @default(uuid()) @db.Uuid
+  name        String               @unique
+  assignments EmployeeAssignment[]
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+model EmployeePosition {
+  id          String               @id @default(uuid()) @db.Uuid
+  name        String               @unique
+  assignments EmployeeAssignment[]
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  @@map("positions")
+}
+
+model EmployeeLocation {
+  id          String               @id @default(uuid()) @db.Uuid
+  name        String               @unique
+  assignments EmployeeAssignment[]
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  @@map("locations")
+}
+
+model Employee {
+  id             String               @id @default(uuid()) @db.Uuid
+  employeeNumber String               @unique @map("employee_number")
+  firstName      String               @map("first_name")
+  lastName       String               @map("last_name")
+  email          String?              @unique
+  phone          String?
+  hireDate       DateTime             @map("hire_date") @db.Date
+  status         String
+  assignments    EmployeeAssignment[]
+  contracts      EmployeeContract[]
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([hireDate])
+  @@map("employees")
+}
+
+model EmployeeAssignment {
+  id         String           @id @default(uuid()) @db.Uuid
+  employeeId String           @db.Uuid @map("employee_id")
+  roleId     String           @db.Uuid @map("role_id")
+  positionId String           @db.Uuid @map("position_id")
+  locationId String           @db.Uuid @map("location_id")
+  startDate  DateTime         @map("start_date") @db.Date
+  endDate    DateTime?        @map("end_date") @db.Date
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  role       EmployeeRole     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  position   EmployeePosition @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  location   EmployeeLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  @@index([employeeId])
+  @@index([roleId])
+  @@index([positionId])
+  @@index([locationId])
+  @@map("employee_assignments")
+}
+
+model EmployeeContract {
+  id               String   @id @default(uuid()) @db.Uuid
+  employeeId       String   @db.Uuid @map("employee_id")
+  contractType     String   @map("contract_type")
+  status           String
+  startDate        DateTime @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  salaryAmount     Decimal  @map("salary_amount") @db.Decimal(15, 2)
+  currency         String   @default("BIF")
+  paymentFrequency String   @map("payment_frequency")
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("contracts")
+}
+
 model TenantAuditLog {
   id           String               @id @default(uuid()) @db.Uuid
   requestId    String?              @map("request_id")

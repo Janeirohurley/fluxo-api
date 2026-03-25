@@ -1,26 +1,28 @@
+
+// function to convert camelCase to snake_case
 function toSnakeCase(value: string) {
   return value.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
 }
-
+// Type guard to check if a value is a record (object with string keys)
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
-
+// Recursive function to convert example values to snake_case keys
 function convertExampleValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => convertExampleValue(item));
   }
-
+// If it's not a record, return the value as is (primitive types)
   if (!isRecord(value)) {
     return value;
   }
-
+// If it's a record, convert its keys to snake_case and recursively convert its values
   return Object.entries(value).reduce<Record<string, unknown>>((result, [key, entryValue]) => {
     result[toSnakeCase(key)] = convertExampleValue(entryValue);
     return result;
   }, {});
 }
-
+// Recursive function to transform schema objects to follow OpenAPI conventions (snake_case properties and required fields)
 function transformSchema(schema: unknown): unknown {
   if (Array.isArray(schema)) {
     return schema.map((item) => transformSchema(item));
@@ -65,7 +67,7 @@ function transformSchema(schema: unknown): unknown {
     return result;
   }, {});
 }
-
+// Main function to apply OpenAPI conventions to the entire document, including paths, parameters and components
 function applyOpenApiConventions<T extends Record<string, unknown>>(document: T): T {
   const normalized = structuredClone(document);
 
@@ -130,7 +132,7 @@ function applyOpenApiConventions<T extends Record<string, unknown>>(document: T)
 
   return normalized;
 }
-
+// Function to create the OpenAPI document with the defined structure and apply conventions
 export function createOpenApiDocument() {
   return applyOpenApiConventions({
     openapi: '3.0.3',
@@ -138,7 +140,7 @@ export function createOpenApiDocument() {
       title: 'Fluxo API',
       version: '1.0.0',
       description:
-        'Modular API for Fluxo. The current Swagger coverage focuses on the assets and finance modules, plus core discovery endpoints.'
+        'Modular API for Fluxo. The current Swagger coverage focuses on the assets, finance and employees modules, plus core discovery endpoints.'
     },
     servers: [
       {
@@ -163,7 +165,13 @@ export function createOpenApiDocument() {
       { name: 'Accounting Accounts', description: 'Chart of accounts and finance reference data' },
       { name: 'Transactions', description: 'Cash movement and transaction tracking' },
       { name: 'Journal Entries', description: 'Journal entries and their accounting lines' },
-      { name: 'Reconciliations', description: 'Account reconciliation operations' }
+      { name: 'Reconciliations', description: 'Account reconciliation operations' },
+      { name: 'Employees', description: 'Employee directory and personnel operations' },
+      { name: 'Employee Roles', description: 'Employee role reference data' },
+      { name: 'Employee Positions', description: 'Employee position reference data' },
+      { name: 'Employee Locations', description: 'Employee location reference data' },
+      { name: 'Employee Assignments', description: 'Employee assignment history' },
+      { name: 'Employee Contracts', description: 'Employee contract history' }
     ],
     paths: {
       '/': {
@@ -1404,6 +1412,379 @@ export function createOpenApiDocument() {
             '409': { $ref: '#/components/responses/Conflict' }
           }
         }
+      },
+      '/api/employees/docs': {
+        get: {
+          tags: ['Employees'],
+          summary: 'Employees module documentation',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Employees module documentation payload'
+            }
+          }
+        }
+      },
+      '/api/employees/roles': {
+        get: {
+          tags: ['Employee Roles'],
+          summary: 'List employee roles',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Employee role list',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/EmployeeReference' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Employee Roles'],
+          summary: 'Create employee role',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateEmployeeRoleInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created employee role' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/employees/positions': {
+        get: {
+          tags: ['Employee Positions'],
+          summary: 'List employee positions',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Employee position list',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/EmployeeReference' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Employee Positions'],
+          summary: 'Create employee position',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateEmployeePositionInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created employee position' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/employees/locations': {
+        get: {
+          tags: ['Employee Locations'],
+          summary: 'List employee locations',
+          security: [{ ModuleKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Employee location list',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/EmployeeReference' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Employee Locations'],
+          summary: 'Create employee location',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateEmployeeLocationInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created employee location' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/employees': {
+        get: {
+          tags: ['Employees'],
+          summary: 'List employees',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'inactive', 'on_leave', 'terminated'] } },
+            { name: 'roleId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'positionId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'locationId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            {
+              name: 'sortBy',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['createdAt', 'updatedAt', 'employeeNumber', 'firstName', 'lastName', 'hireDate'],
+                default: 'createdAt'
+              }
+            },
+            {
+              name: 'sortOrder',
+              in: 'query',
+              schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Employee list',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ListEmployeesResponse' }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Employees'],
+          summary: 'Create employee',
+          security: [{ ModuleKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateEmployeeInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created employee' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/employees/{id}': {
+        get: {
+          tags: ['Employees'],
+          summary: 'Get employee by id',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/EmployeeId' }],
+          responses: {
+            '200': {
+              description: 'Employee details',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { $ref: '#/components/schemas/Employee' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { $ref: '#/components/responses/NotFound' }
+          }
+        },
+        patch: {
+          tags: ['Employees'],
+          summary: 'Update employee',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/EmployeeId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UpdateEmployeeInput' }
+              }
+            }
+          },
+          responses: {
+            '200': { description: 'Updated employee' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        },
+        delete: {
+          tags: ['Employees'],
+          summary: 'Delete employee',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/EmployeeId' }],
+          responses: {
+            '204': { description: 'Employee deleted' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/employees/{id}/assignments': {
+        get: {
+          tags: ['Employee Assignments'],
+          summary: 'List employee assignments',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/EmployeeId' }],
+          responses: {
+            '200': {
+              description: 'Employee assignment history',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/EmployeeAssignment' }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { $ref: '#/components/responses/NotFound' }
+          }
+        },
+        post: {
+          tags: ['Employee Assignments'],
+          summary: 'Create employee assignment',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/EmployeeId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateEmployeeAssignmentInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created employee assignment' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/employees/{id}/contracts': {
+        get: {
+          tags: ['Employee Contracts'],
+          summary: 'List employee contracts',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/EmployeeId' }],
+          responses: {
+            '200': {
+              description: 'Employee contract history',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/EmployeeContract' }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { $ref: '#/components/responses/NotFound' }
+          }
+        },
+        post: {
+          tags: ['Employee Contracts'],
+          summary: 'Create employee contract',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [{ $ref: '#/components/parameters/EmployeeId' }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateEmployeeContractInput' }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Created employee contract' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
+      },
+      '/api/employees/{id}/contracts/{contractId}': {
+        patch: {
+          tags: ['Employee Contracts'],
+          summary: 'Update employee contract',
+          security: [{ ModuleKeyAuth: [] }],
+          parameters: [
+            { $ref: '#/components/parameters/EmployeeId' },
+            { $ref: '#/components/parameters/ContractId' }
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UpdateEmployeeContractInput' }
+              }
+            }
+          },
+          responses: {
+            '200': { description: 'Updated employee contract' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '409': { $ref: '#/components/responses/Conflict' }
+          }
+        }
       }
     },
     components: {
@@ -1419,6 +1800,24 @@ export function createOpenApiDocument() {
       parameters: {
         AssetId: {
           name: 'id',
+          in: 'path',
+          required: true,
+          schema: {
+            type: 'string',
+            format: 'uuid'
+          }
+        },
+        EmployeeId: {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: {
+            type: 'string',
+            format: 'uuid'
+          }
+        },
+        ContractId: {
+          name: 'contractId',
           in: 'path',
           required: true,
           schema: {
@@ -1493,6 +1892,8 @@ export function createOpenApiDocument() {
                 modules: { type: 'string', example: '/modules' },
                 overview: { type: 'string', example: '/api/overview' },
                 assets: { type: 'string', example: '/api/assets/docs' },
+                finance: { type: 'string', example: '/api/finance/docs' },
+                employees: { type: 'string', example: '/api/employees/docs' },
                 accessPlans: { type: 'string', example: '/api/access/plans' },
                 accessMe: { type: 'string', example: '/api/access/me' },
                 swagger: { type: 'string', example: '/docs' },
@@ -2194,6 +2595,228 @@ export function createOpenApiDocument() {
             data: {
               type: 'array',
               items: { $ref: '#/components/schemas/ReconciliationDetails' }
+            },
+            pagination: { $ref: '#/components/schemas/PaginationInfo' }
+          },
+          required: ['data', 'pagination']
+        },
+        EmployeeReference: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                name: { type: 'string', example: 'Manager' }
+              },
+              required: ['name']
+            }
+          ]
+        },
+        CreateEmployeeRoleInput: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', example: 'Manager' }
+          },
+          required: ['name']
+        },
+        CreateEmployeePositionInput: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', example: 'Accountant' }
+          },
+          required: ['name']
+        },
+        CreateEmployeeLocationInput: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', example: 'Head Office' }
+          },
+          required: ['name']
+        },
+        CreateEmployeeInput: {
+          type: 'object',
+          properties: {
+            employeeNumber: { type: 'string', example: 'EMP-001' },
+            firstName: { type: 'string', example: 'Jane' },
+            lastName: { type: 'string', example: 'Doe' },
+            email: { type: 'string', format: 'email', nullable: true, example: 'jane@example.com' },
+            phone: { type: 'string', nullable: true, example: '+257700000001' },
+            hireDate: { type: 'string', format: 'date', example: '2026-03-24' },
+            status: {
+              type: 'string',
+              enum: ['active', 'inactive', 'on_leave', 'terminated'],
+              example: 'active'
+            }
+          },
+          required: ['employeeNumber', 'firstName', 'lastName', 'hireDate']
+        },
+        UpdateEmployeeInput: {
+          type: 'object',
+          properties: {
+            employeeNumber: { type: 'string', example: 'EMP-001' },
+            firstName: { type: 'string', example: 'Jane' },
+            lastName: { type: 'string', example: 'Doe' },
+            email: { type: 'string', format: 'email', nullable: true },
+            phone: { type: 'string', nullable: true },
+            hireDate: { type: 'string', format: 'date' },
+            status: {
+              type: 'string',
+              enum: ['active', 'inactive', 'on_leave', 'terminated']
+            }
+          }
+        },
+        CreateEmployeeAssignmentInput: {
+          type: 'object',
+          properties: {
+            roleId: { type: 'string', format: 'uuid' },
+            positionId: { type: 'string', format: 'uuid' },
+            locationId: { type: 'string', format: 'uuid' },
+            startDate: { type: 'string', format: 'date', example: '2026-03-24' },
+            endDate: { type: 'string', format: 'date', nullable: true, example: '2026-06-24' }
+          },
+          required: ['roleId', 'positionId', 'locationId', 'startDate']
+        },
+        CreateEmployeeContractInput: {
+          type: 'object',
+          properties: {
+            contractType: { type: 'string', example: 'full-time' },
+            status: {
+              type: 'string',
+              enum: ['draft', 'active', 'suspended', 'terminated', 'expired'],
+              example: 'active'
+            },
+            startDate: { type: 'string', format: 'date', example: '2026-03-24' },
+            endDate: { type: 'string', format: 'date', nullable: true, example: '2027-03-24' },
+            salaryAmount: { type: 'number', example: 1500000 },
+            currency: { type: 'string', example: 'BIF' },
+            paymentFrequency: {
+              type: 'string',
+              enum: ['weekly', 'biweekly', 'monthly', 'quarterly', 'annual'],
+              example: 'monthly'
+            }
+          },
+          required: ['contractType', 'startDate', 'salaryAmount']
+        },
+        UpdateEmployeeContractInput: {
+          type: 'object',
+          properties: {
+            contractType: { type: 'string', example: 'full-time' },
+            status: {
+              type: 'string',
+              enum: ['draft', 'active', 'suspended', 'terminated', 'expired']
+            },
+            startDate: { type: 'string', format: 'date' },
+            endDate: { type: 'string', format: 'date', nullable: true },
+            salaryAmount: { type: 'number' },
+            currency: { type: 'string' },
+            paymentFrequency: {
+              type: 'string',
+              enum: ['weekly', 'biweekly', 'monthly', 'quarterly', 'annual']
+            }
+          }
+        },
+        EmployeeAssignment: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                employeeId: { type: 'string', format: 'uuid' },
+                roleId: { type: 'string', format: 'uuid' },
+                positionId: { type: 'string', format: 'uuid' },
+                locationId: { type: 'string', format: 'uuid' },
+                startDate: { type: 'string', format: 'date' },
+                endDate: { type: 'string', format: 'date', nullable: true },
+                role: { $ref: '#/components/schemas/EmployeeReference' },
+                position: { $ref: '#/components/schemas/EmployeeReference' },
+                location: { $ref: '#/components/schemas/EmployeeReference' }
+              },
+              required: [
+                'employeeId',
+                'roleId',
+                'positionId',
+                'locationId',
+                'startDate',
+                'role',
+                'position',
+                'location'
+              ]
+            }
+          ]
+        },
+        EmployeeContract: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                employeeId: { type: 'string', format: 'uuid' },
+                contractType: { type: 'string', example: 'full-time' },
+                status: {
+                  type: 'string',
+                  enum: ['draft', 'active', 'suspended', 'terminated', 'expired']
+                },
+                startDate: { type: 'string', format: 'date' },
+                endDate: { type: 'string', format: 'date', nullable: true },
+                salaryAmount: { type: 'number', example: 1500000 },
+                currency: { type: 'string', example: 'BIF' },
+                paymentFrequency: {
+                  type: 'string',
+                  enum: ['weekly', 'biweekly', 'monthly', 'quarterly', 'annual']
+                }
+              },
+              required: [
+                'employeeId',
+                'contractType',
+                'status',
+                'startDate',
+                'salaryAmount',
+                'currency',
+                'paymentFrequency'
+              ]
+            }
+          ]
+        },
+        Employee: {
+          allOf: [
+            { $ref: '#/components/schemas/TimestampedEntity' },
+            {
+              type: 'object',
+              properties: {
+                employeeNumber: { type: 'string', example: 'EMP-001' },
+                firstName: { type: 'string', example: 'Jane' },
+                lastName: { type: 'string', example: 'Doe' },
+                fullName: { type: 'string', example: 'Jane Doe' },
+                email: { type: 'string', format: 'email', nullable: true },
+                phone: { type: 'string', nullable: true },
+                hireDate: { type: 'string', format: 'date' },
+                status: {
+                  type: 'string',
+                  enum: ['active', 'inactive', 'on_leave', 'terminated']
+                },
+                currentAssignment: {
+                  anyOf: [
+                    { $ref: '#/components/schemas/EmployeeAssignment' },
+                    { type: 'null' }
+                  ]
+                },
+                activeContract: {
+                  anyOf: [
+                    { $ref: '#/components/schemas/EmployeeContract' },
+                    { type: 'null' }
+                  ]
+                }
+              },
+              required: ['employeeNumber', 'firstName', 'lastName', 'fullName', 'hireDate', 'status']
+            }
+          ]
+        },
+        ListEmployeesResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/Employee' }
             },
             pagination: { $ref: '#/components/schemas/PaginationInfo' }
           },

@@ -46,7 +46,7 @@ export function createApp() {
     version,
     basePath,
     requiresAccessKey,
-    ...(['assets', 'finance'].includes(name) ? { docsPath: `${basePath}/docs` } : {})
+    ...(['assets', 'finance','employees'].includes(name) ? { docsPath: `${basePath}/docs` } : {})
   }));
   app.locals.adminPrisma = prisma;
 

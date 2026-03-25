@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { CompanyProvisioningStatus, PrismaClient } from '@prisma/client';
 
 import { TenantProvisioningService } from '../src/shared/tenancy';
 
@@ -35,13 +35,13 @@ const tenantProvisioningService = new TenantProvisioningService(databaseUrl, pro
 async function main() {
   const companyFilter = companySlug
     ? {
-        company: {
-          slug: companySlug
-        }
+      company: {
+        slug: companySlug
       }
+    }
     : {};
 
-  const statuses = includeFailed ? ['ready', 'failed'] : ['ready'];
+  const statuses: Array<CompanyProvisioningStatus> = includeFailed ? ['ready', 'failed'] : ['ready'];
 
   const databases = await prisma.companyDatabase.findMany({
     where: {

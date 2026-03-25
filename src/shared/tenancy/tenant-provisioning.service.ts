@@ -154,6 +154,39 @@ export class TenantProvisioningService {
           [randomUUID(), code, name, accountType]
         );
       }
+
+      for (const name of ['Administrator', 'Manager', 'Officer', 'Technician', 'Staff']) {
+        await client.query(
+          `
+            INSERT INTO roles (id, name, created_at, updated_at)
+            VALUES ($1, $2, NOW(), NOW())
+            ON CONFLICT (name) DO NOTHING
+          `,
+          [randomUUID(), name]
+        );
+      }
+
+      for (const name of ['Operations Officer', 'Accountant', 'HR Officer', 'Technician', 'Driver']) {
+        await client.query(
+          `
+            INSERT INTO positions (id, name, created_at, updated_at)
+            VALUES ($1, $2, NOW(), NOW())
+            ON CONFLICT (name) DO NOTHING
+          `,
+          [randomUUID(), name]
+        );
+      }
+
+      for (const name of ['Head Office', 'Warehouse', 'Field Office']) {
+        await client.query(
+          `
+            INSERT INTO locations (id, name, created_at, updated_at)
+            VALUES ($1, $2, NOW(), NOW())
+            ON CONFLICT (name) DO NOTHING
+          `,
+          [randomUUID(), name]
+        );
+      }
     } finally {
       await client.end();
     }

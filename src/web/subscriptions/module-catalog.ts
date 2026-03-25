@@ -15,7 +15,7 @@ export const MODULE_CATALOG = [
     code: 'employees',
     name: 'Employees',
     description: 'Personnel, postes, roles et historique RH.',
-    availability: 'coming_soon'
+    availability: 'available'
   },
   {
     code: 'payroll',
