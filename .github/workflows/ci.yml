@@ -11,6 +11,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://fluxo:fluxo@localhost:5432/fluxo_ci
+      SHADOW_DATABASE_URL: postgresql://fluxo:fluxo@localhost:5432/fluxo_ci_shadow
+      ADMIN_APPROVAL_TOKEN: github-actions-demo-token
 
     steps:
       - name: Checkout repository
