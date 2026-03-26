@@ -1,15 +1,15 @@
 {
-  "header": "# 📜 Journal des modifications (Changelog)\n\nCe fichier répertorie toutes les versions et changements notables apportés au projet.",
+  "header": "# Changelog\n\nThis file records all notable changes made to the project.",
   "types": [
-    {"type": "feat", "section": "🚀 Nouvelles Fonctionnalités"},
-    {"type": "fix", "section": "🐛 Corrections de Bugs"},
-    {"type": "chore", "hidden": true},
-    {"type": "docs", "section": "📚 Documentation"},
-    {"type": "style", "hidden": true},
-    {"type": "refactor", "section": "⚙️ Refactorisation du Code"},
-    {"type": "perf", "section": "⚡ Performance"},
-    {"type": "test", "hidden": true}
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "refactor", "section": "Refactoring" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "chore", "hidden": true },
+    { "type": "style", "hidden": true },
+    { "type": "test", "hidden": true }
   ],
-  "commitUrlFormat": "https://github.com/ton-utilisateur/{{repository}}/commit/{{hash}}",
-  "compareUrlFormat": "https://github.com/ton-utilisateur/{{repository}}/compare/{{previousTag}}...{{currentTag}}"
+  "commitUrlFormat": "https://github.com/Janeirohurley/fluxo-api/commit/{{hash}}",
+  "compareUrlFormat": "https://github.com/Janeirohurley/fluxo-api/compare/{{previousTag}}...{{currentTag}}"
 }
