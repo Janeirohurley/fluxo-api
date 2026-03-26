@@ -1,6 +1,13 @@
 # Changelog
 
 This file records all notable changes made to the project.
+## [1.2.0](https://github.com/Janeirohurley/fluxo-api/compare/v1.1.0...v1.2.0) (2026-03-26)
+
+
+### Features
+
+* ajouter des workflows CI et de publication pour automatiser les tests et les releases ([bb55c28](https://github.com/Janeirohurley/fluxo-api/commit/bb55c2858332d43e17f53b53a592e365935a332b))
+
 ## 1.1.0 (2026-03-26)
 
 
