@@ -156,6 +156,20 @@ Run tests:
 pnpm test
 ```
 
+Create a release locally, then push commits and tags:
+
+```bash
+pnpm run release
+pnpm run release:push
+```
+
+This flow:
+- updates `package.json`
+- updates `CHANGELOG.md`
+- creates a Git tag like `v1.2.0`
+- pushes commits and tags to `main`
+- triggers GitHub Actions to create the GitHub Release automatically
+
 Synchronize tenant schemas:
 
 ```bash

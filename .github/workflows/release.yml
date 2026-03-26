@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.21.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma clients
+        run: pnpm run prisma:generate
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Extract release notes from changelog
+        run: node scripts/extract-release-notes.js "${{ github.ref_name }}" release-notes.md
+
+      - name: Create release archive
+        shell: bash
+        run: |
+          mkdir -p release-package
+          cp package.json README.md CHANGELOG.md .env.example release-package/
+          cp -r dist prisma scripts docs release-package/
+          tar -czf fluxo-api-${{ github.ref_name }}.tar.gz -C release-package .
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Fluxo API ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: fluxo-api-${{ github.ref_name }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
