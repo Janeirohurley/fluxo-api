@@ -1,6 +1,6 @@
 {
   "name": "fluxo-api",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Multi-tenant modular ERP SaaS API for assets, finance, employees, payroll, subscriptions and adaptive business overview.",
   "private": true,
   "main": "dist/index.js",

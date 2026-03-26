@@ -1,6 +1,13 @@
 # Changelog
 
 This file records all notable changes made to the project.
+### [1.2.1](https://github.com/Janeirohurley/fluxo-api/compare/v1.2.0...v1.2.1) (2026-03-26)
+
+
+### Bug Fixes
+
+* ajouter des variables d'environnement pour les workflows CI et de publication ([0381587](https://github.com/Janeirohurley/fluxo-api/commit/038158762472a8d79ceebc414961e42a82762c21))
+
 ## [1.2.0](https://github.com/Janeirohurley/fluxo-api/compare/v1.1.0...v1.2.0) (2026-03-26)
 
 
