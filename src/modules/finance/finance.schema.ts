@@ -19,9 +19,23 @@ export const createPaymentMethodSchema = z.object({
   name: trimmedString(2, 80)
 });
 
+export const updatePaymentMethodSchema = createPaymentMethodSchema.partial().refine(
+  (value) => Object.keys(value).length > 0,
+  {
+    message: 'At least one field must be provided for update'
+  }
+);
+
 export const createTransactionTypeSchema = z.object({
   name: trimmedString(2, 80)
 });
+
+export const updateTransactionTypeSchema = createTransactionTypeSchema.partial().refine(
+  (value) => Object.keys(value).length > 0,
+  {
+    message: 'At least one field must be provided for update'
+  }
+);
 
 export const createAccountingAccountSchema = z.object({
   code: trimmedString(2, 20),
@@ -189,7 +203,9 @@ export const createReconciliationItemSchema = z
   });
 
 export type CreatePaymentMethodInput = z.infer<typeof createPaymentMethodSchema>;
+export type UpdatePaymentMethodInput = z.infer<typeof updatePaymentMethodSchema>;
 export type CreateTransactionTypeInput = z.infer<typeof createTransactionTypeSchema>;
+export type UpdateTransactionTypeInput = z.infer<typeof updateTransactionTypeSchema>;
 export type CreateAccountingAccountInput = z.infer<typeof createAccountingAccountSchema>;
 export type UpdateAccountingAccountInput = z.infer<typeof updateAccountingAccountSchema>;
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;

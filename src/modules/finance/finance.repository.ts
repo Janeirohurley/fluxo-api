@@ -18,6 +18,8 @@ import {
   type ListReconciliationsQuery,
   type ListTransactionsQuery,
   type PostJournalEntryInput,
+  type UpdatePaymentMethodInput,
+  type UpdateTransactionTypeInput,
   type UpdateAccountingAccountInput,
   type UpdateTransactionInput
 } from './finance.schema';
@@ -39,13 +41,18 @@ import {
 export interface FinanceRepository {
   listPaymentMethods(): Promise<PaymentMethod[]>;
   createPaymentMethod(input: CreatePaymentMethodInput): Promise<PaymentMethod>;
+  updatePaymentMethod(id: string, input: UpdatePaymentMethodInput): Promise<PaymentMethod>;
+  removePaymentMethod(id: string): Promise<void>;
   getPaymentMethodById(id: string): Promise<PaymentMethod>;
   listTransactionTypes(): Promise<TransactionType[]>;
   createTransactionType(input: CreateTransactionTypeInput): Promise<TransactionType>;
+  updateTransactionType(id: string, input: UpdateTransactionTypeInput): Promise<TransactionType>;
+  removeTransactionType(id: string): Promise<void>;
   getTransactionTypeById(id: string): Promise<TransactionType>;
   listAccountingAccounts(): Promise<AccountingAccount[]>;
   createAccountingAccount(input: CreateAccountingAccountInput): Promise<AccountingAccount>;
   updateAccountingAccount(id: string, input: UpdateAccountingAccountInput): Promise<AccountingAccount>;
+  removeAccountingAccount(id: string): Promise<void>;
   getAccountingAccountById(id: string): Promise<AccountingAccount>;
   listTransactions(input: ListTransactionsQuery): Promise<FinanceTransactionListQueryResult>;
   getTransactionById(id: string): Promise<FinanceTransaction>;
@@ -120,6 +127,41 @@ export class InMemoryFinanceRepository implements FinanceRepository {
     return entity;
   }
 
+  async updatePaymentMethod(
+    id: string,
+    input: UpdatePaymentMethodInput
+  ): Promise<PaymentMethod> {
+    const existing = await this.getPaymentMethodById(id);
+    const nextName = input.name ?? existing.name;
+    this.assertUniqueName(this.paymentMethods, nextName, 'Payment method', id);
+
+    const updated: PaymentMethod = {
+      ...existing,
+      ...input,
+      updatedAt: nowIso()
+    };
+
+    this.paymentMethods.set(id, updated);
+    return updated;
+  }
+
+  async removePaymentMethod(id: string): Promise<void> {
+    await this.getPaymentMethodById(id);
+
+    const linkedTransactions = Array.from(this.transactions.values()).some(
+      (transaction) => transaction.paymentMethodId === id
+    );
+
+    if (linkedTransactions) {
+      throw new HttpError(
+        409,
+        'Cannot delete a payment method that is already linked to transactions'
+      );
+    }
+
+    this.paymentMethods.delete(id);
+  }
+
   async getPaymentMethodById(id: string): Promise<PaymentMethod> {
     const method = this.paymentMethods.get(id);
     if (!method) {
@@ -140,6 +182,41 @@ export class InMemoryFinanceRepository implements FinanceRepository {
     const entity = this.createTimestampedEntity(input);
     this.transactionTypes.set(entity.id, entity);
     return entity;
+  }
+
+  async updateTransactionType(
+    id: string,
+    input: UpdateTransactionTypeInput
+  ): Promise<TransactionType> {
+    const existing = await this.getTransactionTypeById(id);
+    const nextName = input.name ?? existing.name;
+    this.assertUniqueName(this.transactionTypes, nextName, 'Transaction type', id);
+
+    const updated: TransactionType = {
+      ...existing,
+      ...input,
+      updatedAt: nowIso()
+    };
+
+    this.transactionTypes.set(id, updated);
+    return updated;
+  }
+
+  async removeTransactionType(id: string): Promise<void> {
+    await this.getTransactionTypeById(id);
+
+    const linkedTransactions = Array.from(this.transactions.values()).some(
+      (transaction) => transaction.transactionTypeId === id
+    );
+
+    if (linkedTransactions) {
+      throw new HttpError(
+        409,
+        'Cannot delete a transaction type that is already linked to transactions'
+      );
+    }
+
+    this.transactionTypes.delete(id);
   }
 
   async getTransactionTypeById(id: string): Promise<TransactionType> {
@@ -179,6 +256,26 @@ export class InMemoryFinanceRepository implements FinanceRepository {
 
     this.accountingAccounts.set(id, updated);
     return updated;
+  }
+
+  async removeAccountingAccount(id: string): Promise<void> {
+    await this.getAccountingAccountById(id);
+
+    const hasJournalLines = Array.from(this.journalEntryLines.values()).some(
+      (line) => line.accountId === id
+    );
+    const hasReconciliations = Array.from(this.reconciliations.values()).some(
+      (reconciliation) => reconciliation.accountId === id
+    );
+
+    if (hasJournalLines || hasReconciliations) {
+      throw new HttpError(
+        409,
+        'Cannot delete an accounting account that is already linked to journal entries or reconciliations'
+      );
+    }
+
+    this.accountingAccounts.delete(id);
   }
 
   async getAccountingAccountById(id: string): Promise<AccountingAccount> {
@@ -574,12 +671,15 @@ export class InMemoryFinanceRepository implements FinanceRepository {
     };
   }
 
-  private assertUniqueName<T extends { name: string }>(
+  private assertUniqueName<T extends { id: string; name: string }>(
     collection: Map<string, T>,
     name: string,
-    label: string
+    label: string,
+    ignoreId?: string
   ) {
-    const duplicate = Array.from(collection.values()).find((entity) => entity.name === name);
+    const duplicate = Array.from(collection.values()).find(
+      (entity) => entity.name === name && entity.id !== ignoreId
+    );
     if (duplicate) {
       throw new HttpError(409, `${label} "${name}" already exists`);
     }
@@ -675,6 +775,41 @@ export class PrismaFinanceRepository implements FinanceRepository {
     }
   }
 
+  async updatePaymentMethod(
+    id: string,
+    input: UpdatePaymentMethodInput
+  ): Promise<PaymentMethod> {
+    try {
+      const method = await this.prisma.paymentMethod.update({
+        where: { id },
+        data: input
+      });
+
+      return this.toPaymentMethod(method);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Payment method with id "${id}" not found`,
+        uniqueMessage:
+          input.name !== undefined
+            ? `Payment method "${input.name}" already exists`
+            : 'A payment method with the same unique value already exists'
+      });
+    }
+  }
+
+  async removePaymentMethod(id: string): Promise<void> {
+    try {
+      await this.prisma.paymentMethod.delete({
+        where: { id }
+      });
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Payment method with id "${id}" not found`,
+        relationMessage: 'Cannot delete a payment method that is already linked to transactions'
+      });
+    }
+  }
+
   async getPaymentMethodById(id: string): Promise<PaymentMethod> {
     const method = await this.prisma.paymentMethod.findUnique({
       where: { id }
@@ -705,6 +840,41 @@ export class PrismaFinanceRepository implements FinanceRepository {
     } catch (error) {
       this.rethrowKnownError(error, {
         uniqueMessage: `Transaction type "${input.name}" already exists`
+      });
+    }
+  }
+
+  async updateTransactionType(
+    id: string,
+    input: UpdateTransactionTypeInput
+  ): Promise<TransactionType> {
+    try {
+      const transactionType = await this.prisma.transactionType.update({
+        where: { id },
+        data: input
+      });
+
+      return this.toTransactionType(transactionType);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Transaction type with id "${id}" not found`,
+        uniqueMessage:
+          input.name !== undefined
+            ? `Transaction type "${input.name}" already exists`
+            : 'A transaction type with the same unique value already exists'
+      });
+    }
+  }
+
+  async removeTransactionType(id: string): Promise<void> {
+    try {
+      await this.prisma.transactionType.delete({
+        where: { id }
+      });
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Transaction type with id "${id}" not found`,
+        relationMessage: 'Cannot delete a transaction type that is already linked to transactions'
       });
     }
   }
@@ -761,6 +931,20 @@ export class PrismaFinanceRepository implements FinanceRepository {
           input.code !== undefined
             ? `Accounting account with code "${input.code}" already exists`
             : 'An accounting account with the same unique value already exists'
+      });
+    }
+  }
+
+  async removeAccountingAccount(id: string): Promise<void> {
+    try {
+      await this.prisma.accountingAccount.delete({
+        where: { id }
+      });
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Accounting account with id "${id}" not found`,
+        relationMessage:
+          'Cannot delete an accounting account that is already linked to journal entries or reconciliations'
       });
     }
   }

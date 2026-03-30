@@ -13,6 +13,8 @@ import {
   listReconciliationsQuerySchema,
   listTransactionsQuerySchema,
   postJournalEntrySchema,
+  updatePaymentMethodSchema,
+  updateTransactionTypeSchema,
   updateAccountingAccountSchema,
   updateTransactionSchema
 } from './finance.schema';
@@ -47,6 +49,21 @@ export class FinanceController {
     });
   };
 
+  updatePaymentMethod = async (req: Request<{ id: string }>, res: Response) => {
+    const payload = updatePaymentMethodSchema.parse(req.body);
+    const paymentMethod = await this.financeService.updatePaymentMethod(req.params.id, payload);
+
+    res.status(200).json({
+      message: 'Payment method updated successfully',
+      data: paymentMethod
+    });
+  };
+
+  removePaymentMethod = async (req: Request<{ id: string }>, res: Response) => {
+    await this.financeService.removePaymentMethod(req.params.id);
+    res.status(204).send();
+  };
+
   listTransactionTypes = async (_req: Request, res: Response) => {
     res.status(200).json({
       data: await this.financeService.listTransactionTypes()
@@ -61,6 +78,21 @@ export class FinanceController {
       message: 'Transaction type created successfully',
       data: transactionType
     });
+  };
+
+  updateTransactionType = async (req: Request<{ id: string }>, res: Response) => {
+    const payload = updateTransactionTypeSchema.parse(req.body);
+    const transactionType = await this.financeService.updateTransactionType(req.params.id, payload);
+
+    res.status(200).json({
+      message: 'Transaction type updated successfully',
+      data: transactionType
+    });
+  };
+
+  removeTransactionType = async (req: Request<{ id: string }>, res: Response) => {
+    await this.financeService.removeTransactionType(req.params.id);
+    res.status(204).send();
   };
 
   listAccountingAccounts = async (_req: Request, res: Response) => {
@@ -87,6 +119,11 @@ export class FinanceController {
       message: 'Accounting account updated successfully',
       data: account
     });
+  };
+
+  removeAccountingAccount = async (req: Request<{ id: string }>, res: Response) => {
+    await this.financeService.removeAccountingAccount(req.params.id);
+    res.status(204).send();
   };
 
   listTransactions = async (req: Request, res: Response) => {

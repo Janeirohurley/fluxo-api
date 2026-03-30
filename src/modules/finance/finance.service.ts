@@ -13,6 +13,8 @@ import {
   type ListReconciliationsQuery,
   type ListTransactionsQuery,
   type PostJournalEntryInput,
+  type UpdatePaymentMethodInput,
+  type UpdateTransactionTypeInput,
   type UpdateAccountingAccountInput,
   type UpdateTransactionInput
 } from './finance.schema';
@@ -63,12 +65,28 @@ export class FinanceService {
     return this.repository.createPaymentMethod(input);
   }
 
+  updatePaymentMethod(id: string, input: UpdatePaymentMethodInput): Promise<PaymentMethod> {
+    return this.repository.updatePaymentMethod(id, input);
+  }
+
+  removePaymentMethod(id: string): Promise<void> {
+    return this.repository.removePaymentMethod(id);
+  }
+
   listTransactionTypes(): Promise<TransactionType[]> {
     return this.repository.listTransactionTypes();
   }
 
   createTransactionType(input: CreateTransactionTypeInput): Promise<TransactionType> {
     return this.repository.createTransactionType(input);
+  }
+
+  updateTransactionType(id: string, input: UpdateTransactionTypeInput): Promise<TransactionType> {
+    return this.repository.updateTransactionType(id, input);
+  }
+
+  removeTransactionType(id: string): Promise<void> {
+    return this.repository.removeTransactionType(id);
   }
 
   listAccountingAccounts(): Promise<AccountingAccount[]> {
@@ -84,6 +102,10 @@ export class FinanceService {
     input: UpdateAccountingAccountInput
   ): Promise<AccountingAccount> {
     return this.repository.updateAccountingAccount(id, input);
+  }
+
+  removeAccountingAccount(id: string): Promise<void> {
+    return this.repository.removeAccountingAccount(id);
   }
 
   async listTransactions(input: ListTransactionsQuery): Promise<FinanceTransactionListResult> {
