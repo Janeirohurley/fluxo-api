@@ -23,11 +23,23 @@ export const createEmployeeRoleSchema = z.object({
   name: trimmedString(2, 80)
 });
 
+export const updateEmployeeRoleSchema = z.object({
+  name: trimmedString(2, 80)
+});
+
 export const createEmployeePositionSchema = z.object({
   name: trimmedString(2, 120)
 });
 
+export const updateEmployeePositionSchema = z.object({
+  name: trimmedString(2, 120)
+});
+
 export const createEmployeeLocationSchema = z.object({
+  name: trimmedString(2, 120)
+});
+
+export const updateEmployeeLocationSchema = z.object({
   name: trimmedString(2, 120)
 });
 
@@ -68,16 +80,36 @@ export const listEmployeesQuerySchema = createPaginationQuerySchema({
   sortOrder: z.enum(['asc', 'desc']).default('desc')
 });
 
-export const createEmployeeAssignmentSchema = z
-  .object({
-    roleId: uuidSchema,
-    positionId: uuidSchema,
-    locationId: uuidSchema,
-    startDate: dateStringSchema,
-    endDate: dateStringSchema.optional()
-  })
+const employeeAssignmentBaseSchema = z.object({
+  roleId: uuidSchema,
+  positionId: uuidSchema,
+  locationId: uuidSchema,
+  startDate: dateStringSchema,
+  endDate: dateStringSchema.optional()
+});
+
+export const createEmployeeAssignmentSchema = employeeAssignmentBaseSchema
   .superRefine((value, context) => {
     if (value.endDate && value.endDate < value.startDate) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endDate'],
+        message: 'End date cannot be before start date'
+      });
+    }
+  });
+
+export const updateEmployeeAssignmentSchema = employeeAssignmentBaseSchema
+  .partial()
+  .superRefine((value, context) => {
+    if (Object.keys(value).length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'At least one field must be provided for update'
+      });
+    }
+
+    if (value.startDate && value.endDate && value.endDate < value.startDate) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['endDate'],
@@ -115,11 +147,15 @@ export const updateEmployeeContractSchema = employeeContractBaseSchema.partial()
 );
 
 export type CreateEmployeeRoleInput = z.infer<typeof createEmployeeRoleSchema>;
+export type UpdateEmployeeRoleInput = z.infer<typeof updateEmployeeRoleSchema>;
 export type CreateEmployeePositionInput = z.infer<typeof createEmployeePositionSchema>;
+export type UpdateEmployeePositionInput = z.infer<typeof updateEmployeePositionSchema>;
 export type CreateEmployeeLocationInput = z.infer<typeof createEmployeeLocationSchema>;
+export type UpdateEmployeeLocationInput = z.infer<typeof updateEmployeeLocationSchema>;
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 export type ListEmployeesQuery = z.infer<typeof listEmployeesQuerySchema>;
 export type CreateEmployeeAssignmentInput = z.infer<typeof createEmployeeAssignmentSchema>;
+export type UpdateEmployeeAssignmentInput = z.infer<typeof updateEmployeeAssignmentSchema>;
 export type CreateEmployeeContractInput = z.infer<typeof createEmployeeContractSchema>;
 export type UpdateEmployeeContractInput = z.infer<typeof updateEmployeeContractSchema>;

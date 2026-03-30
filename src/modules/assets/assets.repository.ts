@@ -452,6 +452,20 @@ export class InMemoryAssetsRepository implements AssetsRepository {
       return false;
     }
 
+    if (input.employeeId) {
+      const hasActiveAssignment = Array.from(this.assignments.values()).some(
+        (assignment) =>
+          assignment.assetId === asset.id &&
+          assignment.employeeId === input.employeeId &&
+          assignment.startDate <= new Date().toISOString().slice(0, 10) &&
+          (!assignment.endDate || assignment.endDate >= new Date().toISOString().slice(0, 10))
+      );
+
+      if (!hasActiveAssignment) {
+        return false;
+      }
+    }
+
     if (!input.search) {
       return true;
     }
@@ -1025,6 +1039,8 @@ export class PrismaAssetsRepository implements AssetsRepository {
   }
 
   private buildAssetWhereInput(input: ListAssetsQuery): TenantAssetWhereInput {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const search = input.search
       ? {
           OR: [
@@ -1040,6 +1056,17 @@ export class PrismaAssetsRepository implements AssetsRepository {
     return {
       ...(input.categoryId ? { categoryId: input.categoryId } : {}),
       ...(input.statusId ? { statusId: input.statusId } : {}),
+      ...(input.employeeId
+        ? {
+            assignments: {
+              some: {
+                employeeId: input.employeeId,
+                startDate: { lte: today },
+                OR: [{ endDate: null }, { endDate: { gte: today } }]
+              }
+            }
+          }
+        : {}),
       ...(search ?? {})
     };
   }

@@ -56,6 +56,7 @@ export const listAssetsQuerySchema = createPaginationQuerySchema({
   search: optionalSearchSchema,
   categoryId: uuidSchema.optional(),
   statusId: uuidSchema.optional(),
+  employeeId: uuidSchema.optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'name', 'inventoryCode']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc')
 });

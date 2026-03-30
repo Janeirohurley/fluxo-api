@@ -17,6 +17,10 @@ import {
   type CreateEmployeePositionInput,
   type CreateEmployeeRoleInput,
   type ListEmployeesQuery,
+  type UpdateEmployeeAssignmentInput,
+  type UpdateEmployeeLocationInput,
+  type UpdateEmployeePositionInput,
+  type UpdateEmployeeRoleInput,
   type UpdateEmployeeContractInput,
   type UpdateEmployeeInput
 } from './employees.schema';
@@ -31,12 +35,18 @@ import {
 export interface EmployeesRepository {
   listRoles(): Promise<EmployeeReference[]>;
   createRole(input: CreateEmployeeRoleInput): Promise<EmployeeReference>;
+  updateRole(id: string, input: UpdateEmployeeRoleInput): Promise<EmployeeReference>;
+  removeRole(id: string): Promise<void>;
   getRoleById(id: string): Promise<EmployeeReference>;
   listPositions(): Promise<EmployeeReference[]>;
   createPosition(input: CreateEmployeePositionInput): Promise<EmployeeReference>;
+  updatePosition(id: string, input: UpdateEmployeePositionInput): Promise<EmployeeReference>;
+  removePosition(id: string): Promise<void>;
   getPositionById(id: string): Promise<EmployeeReference>;
   listLocations(): Promise<EmployeeReference[]>;
   createLocation(input: CreateEmployeeLocationInput): Promise<EmployeeReference>;
+  updateLocation(id: string, input: UpdateEmployeeLocationInput): Promise<EmployeeReference>;
+  removeLocation(id: string): Promise<void>;
   getLocationById(id: string): Promise<EmployeeReference>;
   listEmployees(input: ListEmployeesQuery): Promise<EmployeeListQueryResult>;
   getEmployeeById(id: string): Promise<Employee>;
@@ -45,6 +55,12 @@ export interface EmployeesRepository {
   removeEmployee(id: string): Promise<void>;
   listAssignmentsByEmployeeId(employeeId: string): Promise<EmployeeAssignment[]>;
   createAssignment(employeeId: string, input: CreateEmployeeAssignmentInput): Promise<EmployeeAssignment>;
+  updateAssignment(
+    employeeId: string,
+    assignmentId: string,
+    input: UpdateEmployeeAssignmentInput
+  ): Promise<EmployeeAssignment>;
+  removeAssignment(employeeId: string, assignmentId: string): Promise<void>;
   listContractsByEmployeeId(employeeId: string): Promise<EmployeeContract[]>;
   createContract(employeeId: string, input: CreateEmployeeContractInput): Promise<EmployeeContract>;
   updateContract(
@@ -52,6 +68,7 @@ export interface EmployeesRepository {
     contractId: string,
     input: UpdateEmployeeContractInput
   ): Promise<EmployeeContract>;
+  removeContract(employeeId: string, contractId: string): Promise<void>;
 }
 
 function nowIso() {
@@ -124,6 +141,27 @@ export class InMemoryEmployeesRepository implements EmployeesRepository {
     return role;
   }
 
+  async updateRole(id: string, input: UpdateEmployeeRoleInput): Promise<EmployeeReference> {
+    const existing = this.getReferenceOrThrow(this.roles, id, 'Role');
+    this.assertUniqueName(this.roles, input.name, 'Role', id);
+    const updated = {
+      ...existing,
+      name: input.name,
+      updatedAt: nowIso()
+    };
+    this.roles.set(id, updated);
+    return updated;
+  }
+
+  async removeRole(id: string): Promise<void> {
+    this.getReferenceOrThrow(this.roles, id, 'Role');
+    const isUsed = Array.from(this.assignments.values()).some((assignment) => assignment.roleId === id);
+    if (isUsed) {
+      throw new HttpError(409, 'Role cannot be deleted because it is already used by assignments');
+    }
+    this.roles.delete(id);
+  }
+
   async getRoleById(id: string): Promise<EmployeeReference> {
     return this.getReferenceOrThrow(this.roles, id, 'Role');
   }
@@ -139,6 +177,27 @@ export class InMemoryEmployeesRepository implements EmployeesRepository {
     return position;
   }
 
+  async updatePosition(id: string, input: UpdateEmployeePositionInput): Promise<EmployeeReference> {
+    const existing = this.getReferenceOrThrow(this.positions, id, 'Position');
+    this.assertUniqueName(this.positions, input.name, 'Position', id);
+    const updated = {
+      ...existing,
+      name: input.name,
+      updatedAt: nowIso()
+    };
+    this.positions.set(id, updated);
+    return updated;
+  }
+
+  async removePosition(id: string): Promise<void> {
+    this.getReferenceOrThrow(this.positions, id, 'Position');
+    const isUsed = Array.from(this.assignments.values()).some((assignment) => assignment.positionId === id);
+    if (isUsed) {
+      throw new HttpError(409, 'Position cannot be deleted because it is already used by assignments');
+    }
+    this.positions.delete(id);
+  }
+
   async getPositionById(id: string): Promise<EmployeeReference> {
     return this.getReferenceOrThrow(this.positions, id, 'Position');
   }
@@ -152,6 +211,27 @@ export class InMemoryEmployeesRepository implements EmployeesRepository {
     const location = this.createReference(input.name);
     this.locations.set(location.id, location);
     return location;
+  }
+
+  async updateLocation(id: string, input: UpdateEmployeeLocationInput): Promise<EmployeeReference> {
+    const existing = this.getReferenceOrThrow(this.locations, id, 'Location');
+    this.assertUniqueName(this.locations, input.name, 'Location', id);
+    const updated = {
+      ...existing,
+      name: input.name,
+      updatedAt: nowIso()
+    };
+    this.locations.set(id, updated);
+    return updated;
+  }
+
+  async removeLocation(id: string): Promise<void> {
+    this.getReferenceOrThrow(this.locations, id, 'Location');
+    const isUsed = Array.from(this.assignments.values()).some((assignment) => assignment.locationId === id);
+    if (isUsed) {
+      throw new HttpError(409, 'Location cannot be deleted because it is already used by assignments');
+    }
+    this.locations.delete(id);
   }
 
   async getLocationById(id: string): Promise<EmployeeReference> {
@@ -308,6 +388,49 @@ export class InMemoryEmployeesRepository implements EmployeesRepository {
     return assignment;
   }
 
+  async updateAssignment(
+    employeeId: string,
+    assignmentId: string,
+    input: UpdateEmployeeAssignmentInput
+  ): Promise<EmployeeAssignment> {
+    await this.getEmployeeById(employeeId);
+    const existing = this.assignments.get(assignmentId);
+    if (!existing || existing.employeeId !== employeeId) {
+      throw new HttpError(404, `Assignment with id "${assignmentId}" not found for this employee`);
+    }
+
+    const role = input.roleId ? await this.getRoleById(input.roleId) : existing.role;
+    const position = input.positionId ? await this.getPositionById(input.positionId) : existing.position;
+    const location = input.locationId ? await this.getLocationById(input.locationId) : existing.location;
+
+    const updated: EmployeeAssignment = {
+      ...existing,
+      ...input,
+      roleId: input.roleId ?? existing.roleId,
+      positionId: input.positionId ?? existing.positionId,
+      locationId: input.locationId ?? existing.locationId,
+      startDate: input.startDate ?? existing.startDate,
+      endDate: input.endDate !== undefined ? input.endDate : existing.endDate,
+      role,
+      position,
+      location,
+      updatedAt: nowIso()
+    };
+
+    this.assignments.set(assignmentId, updated);
+    return updated;
+  }
+
+  async removeAssignment(employeeId: string, assignmentId: string): Promise<void> {
+    await this.getEmployeeById(employeeId);
+    const existing = this.assignments.get(assignmentId);
+    if (!existing || existing.employeeId !== employeeId) {
+      throw new HttpError(404, `Assignment with id "${assignmentId}" not found for this employee`);
+    }
+
+    this.assignments.delete(assignmentId);
+  }
+
   async listContractsByEmployeeId(employeeId: string): Promise<EmployeeContract[]> {
     await this.getEmployeeById(employeeId);
     return Array.from(this.contracts.values())
@@ -357,6 +480,16 @@ export class InMemoryEmployeesRepository implements EmployeesRepository {
 
     this.contracts.set(contractId, updated);
     return updated;
+  }
+
+  async removeContract(employeeId: string, contractId: string): Promise<void> {
+    await this.getEmployeeById(employeeId);
+    const existing = this.contracts.get(contractId);
+    if (!existing || existing.employeeId !== employeeId) {
+      throw new HttpError(404, `Contract with id "${contractId}" not found for this employee`);
+    }
+
+    this.contracts.delete(contractId);
   }
 
   private seedReferenceData() {
@@ -513,6 +646,28 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
     }
   }
 
+  async updateRole(id: string, input: UpdateEmployeeRoleInput): Promise<EmployeeReference> {
+    await this.getRoleById(id);
+
+    try {
+      const role = await this.prisma.employeeRole.update({
+        where: { id },
+        data: { name: input.name }
+      });
+      return mapReference(role);
+    } catch (error) {
+      throw this.mapPrismaError(error, 'Role');
+    }
+  }
+
+  async removeRole(id: string): Promise<void> {
+    try {
+      await this.prisma.employeeRole.delete({ where: { id } });
+    } catch (error) {
+      throw this.mapPrismaDeleteError(error, 'Role', id);
+    }
+  }
+
   async getRoleById(id: string): Promise<EmployeeReference> {
     const role = await this.prisma.employeeRole.findUnique({ where: { id } });
     if (!role) {
@@ -542,6 +697,28 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
     }
   }
 
+  async updatePosition(id: string, input: UpdateEmployeePositionInput): Promise<EmployeeReference> {
+    await this.getPositionById(id);
+
+    try {
+      const position = await this.prisma.employeePosition.update({
+        where: { id },
+        data: { name: input.name }
+      });
+      return mapReference(position);
+    } catch (error) {
+      throw this.mapPrismaError(error, 'Position');
+    }
+  }
+
+  async removePosition(id: string): Promise<void> {
+    try {
+      await this.prisma.employeePosition.delete({ where: { id } });
+    } catch (error) {
+      throw this.mapPrismaDeleteError(error, 'Position', id);
+    }
+  }
+
   async getPositionById(id: string): Promise<EmployeeReference> {
     const position = await this.prisma.employeePosition.findUnique({ where: { id } });
     if (!position) {
@@ -568,6 +745,28 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
       return mapReference(location);
     } catch (error) {
       throw this.mapPrismaError(error, 'Location');
+    }
+  }
+
+  async updateLocation(id: string, input: UpdateEmployeeLocationInput): Promise<EmployeeReference> {
+    await this.getLocationById(id);
+
+    try {
+      const location = await this.prisma.employeeLocation.update({
+        where: { id },
+        data: { name: input.name }
+      });
+      return mapReference(location);
+    } catch (error) {
+      throw this.mapPrismaError(error, 'Location');
+    }
+  }
+
+  async removeLocation(id: string): Promise<void> {
+    try {
+      await this.prisma.employeeLocation.delete({ where: { id } });
+    } catch (error) {
+      throw this.mapPrismaDeleteError(error, 'Location', id);
     }
   }
 
@@ -814,6 +1013,65 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
     }
   }
 
+  async updateAssignment(
+    employeeId: string,
+    assignmentId: string,
+    input: UpdateEmployeeAssignmentInput
+  ): Promise<EmployeeAssignment> {
+    await this.getEmployeeById(employeeId);
+    const assignment = await this.prisma.employeeAssignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        role: true,
+        position: true,
+        location: true
+      }
+    });
+    if (!assignment || assignment.employeeId !== employeeId) {
+      throw new HttpError(404, `Assignment with id "${assignmentId}" not found for this employee`);
+    }
+
+    try {
+      const updated = await this.prisma.employeeAssignment.update({
+        where: { id: assignmentId },
+        data: {
+          ...(input.roleId !== undefined ? { roleId: input.roleId } : {}),
+          ...(input.positionId !== undefined ? { positionId: input.positionId } : {}),
+          ...(input.locationId !== undefined ? { locationId: input.locationId } : {}),
+          ...(input.startDate !== undefined ? { startDate: new Date(input.startDate) } : {}),
+          ...(input.endDate !== undefined ? { endDate: input.endDate ? new Date(input.endDate) : null } : {})
+        },
+        include: {
+          role: true,
+          position: true,
+          location: true
+        }
+      });
+
+      return this.mapAssignment(updated);
+    } catch (error) {
+      throw this.mapPrismaError(error, 'Employee assignment');
+    }
+  }
+
+  async removeAssignment(employeeId: string, assignmentId: string): Promise<void> {
+    await this.getEmployeeById(employeeId);
+    const assignment = await this.prisma.employeeAssignment.findUnique({
+      where: { id: assignmentId }
+    });
+    if (!assignment || assignment.employeeId !== employeeId) {
+      throw new HttpError(404, `Assignment with id "${assignmentId}" not found for this employee`);
+    }
+
+    try {
+      await this.prisma.employeeAssignment.delete({
+        where: { id: assignmentId }
+      });
+    } catch (error) {
+      throw this.mapPrismaDeleteError(error, 'Assignment', assignmentId);
+    }
+  }
+
   async listContractsByEmployeeId(employeeId: string): Promise<EmployeeContract[]> {
     await this.getEmployeeById(employeeId);
 
@@ -881,6 +1139,24 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
       return this.mapContract(updated);
     } catch (error) {
       throw this.mapPrismaError(error, 'Employee contract');
+    }
+  }
+
+  async removeContract(employeeId: string, contractId: string): Promise<void> {
+    await this.getEmployeeById(employeeId);
+    const contract = await this.prisma.employeeContract.findUnique({
+      where: { id: contractId }
+    });
+    if (!contract || contract.employeeId !== employeeId) {
+      throw new HttpError(404, `Contract with id "${contractId}" not found for this employee`);
+    }
+
+    try {
+      await this.prisma.employeeContract.delete({
+        where: { id: contractId }
+      });
+    } catch (error) {
+      throw this.mapPrismaDeleteError(error, 'Contract', contractId);
     }
   }
 
@@ -956,6 +1232,22 @@ export class PrismaEmployeesRepository implements EmployeesRepository {
       }
       if (knownError.code === 'P2003') {
         return new HttpError(409, `${entityLabel} references a record that does not exist`);
+      }
+    }
+
+    return error instanceof Error ? error : new Error(String(error));
+  }
+
+  private mapPrismaDeleteError(error: unknown, entityLabel: string, id: string) {
+    if (error instanceof TenantPrisma.PrismaClientKnownRequestError) {
+      const knownError = error as InstanceType<typeof TenantPrisma.PrismaClientKnownRequestError>;
+
+      if (knownError.code === 'P2025') {
+        return new HttpError(404, `${entityLabel} with id "${id}" not found`);
+      }
+
+      if (knownError.code === 'P2003') {
+        return new HttpError(409, `${entityLabel} cannot be deleted because it is still referenced`);
       }
     }
 

@@ -9,6 +9,10 @@ import {
   createEmployeeRoleSchema,
   createEmployeeSchema,
   listEmployeesQuerySchema,
+  updateEmployeeAssignmentSchema,
+  updateEmployeeLocationSchema,
+  updateEmployeePositionSchema,
+  updateEmployeeRoleSchema,
   updateEmployeeContractSchema,
   updateEmployeeSchema
 } from './employees.schema';
@@ -38,6 +42,21 @@ export class EmployeesController {
     });
   };
 
+  updateRole = async (req: Request<{ roleId: string }>, res: Response) => {
+    const payload = updateEmployeeRoleSchema.parse(req.body);
+    const role = await this.employeesService.updateRole(req.params.roleId, payload);
+
+    res.status(200).json({
+      message: 'Employee role updated successfully',
+      data: role
+    });
+  };
+
+  removeRole = async (req: Request<{ roleId: string }>, res: Response) => {
+    await this.employeesService.removeRole(req.params.roleId);
+    res.status(204).send();
+  };
+
   listPositions = async (_req: Request, res: Response) => {
     res.status(200).json({
       data: await this.employeesService.listPositions()
@@ -54,6 +73,21 @@ export class EmployeesController {
     });
   };
 
+  updatePosition = async (req: Request<{ positionId: string }>, res: Response) => {
+    const payload = updateEmployeePositionSchema.parse(req.body);
+    const position = await this.employeesService.updatePosition(req.params.positionId, payload);
+
+    res.status(200).json({
+      message: 'Employee position updated successfully',
+      data: position
+    });
+  };
+
+  removePosition = async (req: Request<{ positionId: string }>, res: Response) => {
+    await this.employeesService.removePosition(req.params.positionId);
+    res.status(204).send();
+  };
+
   listLocations = async (_req: Request, res: Response) => {
     res.status(200).json({
       data: await this.employeesService.listLocations()
@@ -68,6 +102,21 @@ export class EmployeesController {
       message: 'Employee location created successfully',
       data: location
     });
+  };
+
+  updateLocation = async (req: Request<{ locationId: string }>, res: Response) => {
+    const payload = updateEmployeeLocationSchema.parse(req.body);
+    const location = await this.employeesService.updateLocation(req.params.locationId, payload);
+
+    res.status(200).json({
+      message: 'Employee location updated successfully',
+      data: location
+    });
+  };
+
+  removeLocation = async (req: Request<{ locationId: string }>, res: Response) => {
+    await this.employeesService.removeLocation(req.params.locationId);
+    res.status(204).send();
   };
 
   listEmployees = async (req: Request, res: Response) => {
@@ -128,6 +177,31 @@ export class EmployeesController {
     });
   };
 
+  updateAssignment = async (
+    req: Request<{ id: string; assignmentId: string }>,
+    res: Response
+  ) => {
+    const payload = updateEmployeeAssignmentSchema.parse(req.body);
+    const assignment = await this.employeesService.updateAssignment(
+      req.params.id,
+      req.params.assignmentId,
+      payload
+    );
+
+    res.status(200).json({
+      message: 'Employee assignment updated successfully',
+      data: assignment
+    });
+  };
+
+  removeAssignment = async (
+    req: Request<{ id: string; assignmentId: string }>,
+    res: Response
+  ) => {
+    await this.employeesService.removeAssignment(req.params.id, req.params.assignmentId);
+    res.status(204).send();
+  };
+
   listContracts = async (req: Request<{ id: string }>, res: Response) => {
     const contracts = await this.employeesService.listContractsByEmployeeId(req.params.id);
 
@@ -161,5 +235,10 @@ export class EmployeesController {
       message: 'Employee contract updated successfully',
       data: contract
     });
+  };
+
+  removeContract = async (req: Request<{ id: string; contractId: string }>, res: Response) => {
+    await this.employeesService.removeContract(req.params.id, req.params.contractId);
+    res.status(204).send();
   };
 }

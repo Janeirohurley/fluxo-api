@@ -8,6 +8,10 @@ import {
   type CreateEmployeePositionInput,
   type CreateEmployeeRoleInput,
   type ListEmployeesQuery,
+  type UpdateEmployeeAssignmentInput,
+  type UpdateEmployeeLocationInput,
+  type UpdateEmployeePositionInput,
+  type UpdateEmployeeRoleInput,
   type UpdateEmployeeContractInput,
   type UpdateEmployeeInput
 } from './employees.schema';
@@ -30,6 +34,14 @@ export class EmployeesService {
     return this.repository.createRole(input);
   }
 
+  updateRole(id: string, input: UpdateEmployeeRoleInput): Promise<EmployeeReference> {
+    return this.repository.updateRole(id, input);
+  }
+
+  removeRole(id: string): Promise<void> {
+    return this.repository.removeRole(id);
+  }
+
   listPositions(): Promise<EmployeeReference[]> {
     return this.repository.listPositions();
   }
@@ -38,12 +50,28 @@ export class EmployeesService {
     return this.repository.createPosition(input);
   }
 
+  updatePosition(id: string, input: UpdateEmployeePositionInput): Promise<EmployeeReference> {
+    return this.repository.updatePosition(id, input);
+  }
+
+  removePosition(id: string): Promise<void> {
+    return this.repository.removePosition(id);
+  }
+
   listLocations(): Promise<EmployeeReference[]> {
     return this.repository.listLocations();
   }
 
   createLocation(input: CreateEmployeeLocationInput): Promise<EmployeeReference> {
     return this.repository.createLocation(input);
+  }
+
+  updateLocation(id: string, input: UpdateEmployeeLocationInput): Promise<EmployeeReference> {
+    return this.repository.updateLocation(id, input);
+  }
+
+  removeLocation(id: string): Promise<void> {
+    return this.repository.removeLocation(id);
   }
 
   async listEmployees(input: ListEmployeesQuery): Promise<PaginatedResult<Employee>> {
@@ -98,6 +126,57 @@ export class EmployeesService {
     return this.repository.createAssignment(employeeId, input);
   }
 
+  async updateAssignment(
+    employeeId: string,
+    assignmentId: string,
+    input: UpdateEmployeeAssignmentInput
+  ): Promise<EmployeeAssignment> {
+    const assignments = await this.repository.listAssignmentsByEmployeeId(employeeId);
+    const existing = assignments.find((assignment) => assignment.id === assignmentId);
+
+    if (!existing) {
+      throw new HttpError(404, `Assignment with id "${assignmentId}" not found for this employee`);
+    }
+
+    const nextInput: CreateEmployeeAssignmentInput = {
+      roleId: input.roleId ?? existing.roleId,
+      positionId: input.positionId ?? existing.positionId,
+      locationId: input.locationId ?? existing.locationId,
+      startDate: input.startDate ?? existing.startDate,
+      endDate: input.endDate ?? existing.endDate
+    };
+
+    await Promise.all([
+      this.repository.getRoleById(nextInput.roleId),
+      this.repository.getPositionById(nextInput.positionId),
+      this.repository.getLocationById(nextInput.locationId)
+    ]);
+
+    const hasOverlap = assignments.some(
+      (assignment) =>
+        assignment.id !== assignmentId &&
+        this.dateRangesOverlap(
+          nextInput.startDate,
+          nextInput.endDate,
+          assignment.startDate,
+          assignment.endDate
+        )
+    );
+
+    if (hasOverlap) {
+      throw new HttpError(
+        409,
+        'This employee already has an assignment covering the requested period'
+      );
+    }
+
+    return this.repository.updateAssignment(employeeId, assignmentId, input);
+  }
+
+  removeAssignment(employeeId: string, assignmentId: string): Promise<void> {
+    return this.repository.removeAssignment(employeeId, assignmentId);
+  }
+
   listContractsByEmployeeId(employeeId: string): Promise<EmployeeContract[]> {
     return this.repository.listContractsByEmployeeId(employeeId);
   }
@@ -144,6 +223,10 @@ export class EmployeesService {
     }
 
     return this.repository.updateContract(employeeId, contractId, input);
+  }
+
+  removeContract(employeeId: string, contractId: string): Promise<void> {
+    return this.repository.removeContract(employeeId, contractId);
   }
 
   private async assertNoAssignmentOverlap(
