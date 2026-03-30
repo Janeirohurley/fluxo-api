@@ -7,6 +7,11 @@ import {
   type ListAssetsQuery,
   type CreateInterventionTypeInput,
   type CreateMaintenanceLogInput,
+  type UpdateAssetCategoryInput,
+  type UpdateAssetAssignmentInput,
+  type UpdateMaintenanceLogInput,
+  type UpdateAssetStatusInput,
+  type UpdateInterventionTypeInput,
   type UpdateAssetInput,
   type UpsertAssetFinanceInput
 } from './assets.schema';
@@ -38,19 +43,42 @@ export interface AssetsRepository {
   getAssetRelationSummary(id: string): Promise<AssetRelationSummary>;
   listCategories(): Promise<AssetCategory[]>;
   createCategory(input: CreateAssetCategoryInput): Promise<AssetCategory>;
+  updateCategory(id: string, input: UpdateAssetCategoryInput): Promise<AssetCategory>;
+  removeCategory(id: string): Promise<void>;
   getCategoryById(id: string): Promise<AssetCategory>;
+  countAssetsByCategoryId(id: string): Promise<number>;
   listStatuses(): Promise<AssetStatus[]>;
   createStatus(input: CreateAssetStatusInput): Promise<AssetStatus>;
+  updateStatus(id: string, input: UpdateAssetStatusInput): Promise<AssetStatus>;
+  removeStatus(id: string): Promise<void>;
   getStatusById(id: string): Promise<AssetStatus>;
+  countAssetsByStatusId(id: string): Promise<number>;
   listInterventionTypes(): Promise<InterventionType[]>;
   createInterventionType(input: CreateInterventionTypeInput): Promise<InterventionType>;
+  updateInterventionType(id: string, input: UpdateInterventionTypeInput): Promise<InterventionType>;
+  removeInterventionType(id: string): Promise<void>;
   getInterventionTypeById(id: string): Promise<InterventionType>;
+  countMaintenanceLogsByInterventionTypeId(id: string): Promise<number>;
   getAssetFinance(assetId: string): Promise<AssetFinanceData | null>;
   upsertAssetFinance(assetId: string, input: UpsertAssetFinanceInput): Promise<AssetFinanceData>;
   listAssignmentsByAssetId(assetId: string): Promise<AssetAssignment[]>;
+  getAssignmentById(assetId: string, assignmentId: string): Promise<AssetAssignment>;
   createAssignment(assetId: string, input: CreateAssetAssignmentInput): Promise<AssetAssignment>;
+  updateAssignment(
+    assetId: string,
+    assignmentId: string,
+    input: UpdateAssetAssignmentInput
+  ): Promise<AssetAssignment>;
+  removeAssignment(assetId: string, assignmentId: string): Promise<void>;
   listMaintenanceLogsByAssetId(assetId: string): Promise<MaintenanceLog[]>;
+  getMaintenanceLogById(assetId: string, maintenanceLogId: string): Promise<MaintenanceLog>;
   createMaintenanceLog(assetId: string, input: CreateMaintenanceLogInput): Promise<MaintenanceLog>;
+  updateMaintenanceLog(
+    assetId: string,
+    maintenanceLogId: string,
+    input: UpdateMaintenanceLogInput
+  ): Promise<MaintenanceLog>;
+  removeMaintenanceLog(assetId: string, maintenanceLogId: string): Promise<void>;
 }
 
 export class InMemoryAssetsRepository implements AssetsRepository {
@@ -154,6 +182,27 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     return category;
   }
 
+  async updateCategory(id: string, input: UpdateAssetCategoryInput): Promise<AssetCategory> {
+    const existing = await this.getCategoryById(id);
+    const nextName = input.name ?? existing.name;
+
+    this.assertUniqueName(this.categories, nextName, 'Asset category', id);
+
+    const updated: AssetCategory = {
+      ...existing,
+      ...input,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.categories.set(id, updated);
+    return updated;
+  }
+
+  async removeCategory(id: string): Promise<void> {
+    await this.getCategoryById(id);
+    this.categories.delete(id);
+  }
+
   async getCategoryById(id: string): Promise<AssetCategory> {
     const category = this.categories.get(id);
 
@@ -162,6 +211,10 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     }
 
     return category;
+  }
+
+  async countAssetsByCategoryId(id: string): Promise<number> {
+    return Array.from(this.assets.values()).filter((asset) => asset.categoryId === id).length;
   }
 
   async listStatuses(): Promise<AssetStatus[]> {
@@ -176,6 +229,27 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     return status;
   }
 
+  async updateStatus(id: string, input: UpdateAssetStatusInput): Promise<AssetStatus> {
+    const existing = await this.getStatusById(id);
+    const nextName = input.name ?? existing.name;
+
+    this.assertUniqueName(this.statuses, nextName, 'Asset status', id);
+
+    const updated: AssetStatus = {
+      ...existing,
+      ...input,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.statuses.set(id, updated);
+    return updated;
+  }
+
+  async removeStatus(id: string): Promise<void> {
+    await this.getStatusById(id);
+    this.statuses.delete(id);
+  }
+
   async getStatusById(id: string): Promise<AssetStatus> {
     const status = this.statuses.get(id);
 
@@ -184,6 +258,10 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     }
 
     return status;
+  }
+
+  async countAssetsByStatusId(id: string): Promise<number> {
+    return Array.from(this.assets.values()).filter((asset) => asset.statusId === id).length;
   }
 
   async listInterventionTypes(): Promise<InterventionType[]> {
@@ -198,6 +276,30 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     return interventionType;
   }
 
+  async updateInterventionType(
+    id: string,
+    input: UpdateInterventionTypeInput
+  ): Promise<InterventionType> {
+    const existing = await this.getInterventionTypeById(id);
+    const nextName = input.name ?? existing.name;
+
+    this.assertUniqueName(this.interventionTypes, nextName, 'Intervention type', id);
+
+    const updated: InterventionType = {
+      ...existing,
+      ...input,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.interventionTypes.set(id, updated);
+    return updated;
+  }
+
+  async removeInterventionType(id: string): Promise<void> {
+    await this.getInterventionTypeById(id);
+    this.interventionTypes.delete(id);
+  }
+
   async getInterventionTypeById(id: string): Promise<InterventionType> {
     const interventionType = this.interventionTypes.get(id);
 
@@ -206,6 +308,11 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     }
 
     return interventionType;
+  }
+
+  async countMaintenanceLogsByInterventionTypeId(id: string): Promise<number> {
+    return Array.from(this.maintenanceLogs.values()).filter((log) => log.interventionTypeId === id)
+      .length;
   }
 
   async getAssetFinance(assetId: string): Promise<AssetFinanceData | null> {
@@ -233,6 +340,16 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     return Array.from(this.assignments.values()).filter((assignment) => assignment.assetId === assetId);
   }
 
+  async getAssignmentById(assetId: string, assignmentId: string): Promise<AssetAssignment> {
+    const assignment = this.assignments.get(assignmentId);
+
+    if (!assignment || assignment.assetId !== assetId) {
+      throw new HttpError(404, `Asset assignment with id "${assignmentId}" not found`);
+    }
+
+    return assignment;
+  }
+
   async createAssignment(
     assetId: string,
     input: CreateAssetAssignmentInput
@@ -246,8 +363,39 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     return assignment;
   }
 
+  async updateAssignment(
+    assetId: string,
+    assignmentId: string,
+    input: UpdateAssetAssignmentInput
+  ): Promise<AssetAssignment> {
+    const existing = await this.getAssignmentById(assetId, assignmentId);
+    const updated: AssetAssignment = {
+      ...existing,
+      ...input,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.assignments.set(assignmentId, updated);
+    return updated;
+  }
+
+  async removeAssignment(assetId: string, assignmentId: string): Promise<void> {
+    await this.getAssignmentById(assetId, assignmentId);
+    this.assignments.delete(assignmentId);
+  }
+
   async listMaintenanceLogsByAssetId(assetId: string): Promise<MaintenanceLog[]> {
     return Array.from(this.maintenanceLogs.values()).filter((log) => log.assetId === assetId);
+  }
+
+  async getMaintenanceLogById(assetId: string, maintenanceLogId: string): Promise<MaintenanceLog> {
+    const maintenanceLog = this.maintenanceLogs.get(maintenanceLogId);
+
+    if (!maintenanceLog || maintenanceLog.assetId !== assetId) {
+      throw new HttpError(404, `Maintenance log with id "${maintenanceLogId}" not found`);
+    }
+
+    return maintenanceLog;
   }
 
   async createMaintenanceLog(
@@ -261,6 +409,27 @@ export class InMemoryAssetsRepository implements AssetsRepository {
 
     this.maintenanceLogs.set(maintenanceLog.id, maintenanceLog);
     return maintenanceLog;
+  }
+
+  async updateMaintenanceLog(
+    assetId: string,
+    maintenanceLogId: string,
+    input: UpdateMaintenanceLogInput
+  ): Promise<MaintenanceLog> {
+    const existing = await this.getMaintenanceLogById(assetId, maintenanceLogId);
+    const updated: MaintenanceLog = {
+      ...existing,
+      ...input,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.maintenanceLogs.set(maintenanceLogId, updated);
+    return updated;
+  }
+
+  async removeMaintenanceLog(assetId: string, maintenanceLogId: string): Promise<void> {
+    await this.getMaintenanceLogById(assetId, maintenanceLogId);
+    this.maintenanceLogs.delete(maintenanceLogId);
   }
 
   private createTimestampedEntity<T extends object>(input: T) {
@@ -326,9 +495,12 @@ export class InMemoryAssetsRepository implements AssetsRepository {
   private assertUniqueName<T extends { id: string; name: string }>(
     records: Map<string, T>,
     name: string,
-    label: string
+    label: string,
+    ignoreId?: string
   ) {
-    const duplicate = Array.from(records.values()).find((record) => record.name === name);
+    const duplicate = Array.from(records.values()).find(
+      (record) => record.name === name && record.id !== ignoreId
+    );
 
     if (duplicate) {
       throw new HttpError(409, `${label} "${name}" already exists`);
@@ -488,6 +660,37 @@ export class PrismaAssetsRepository implements AssetsRepository {
     }
   }
 
+  async updateCategory(id: string, input: UpdateAssetCategoryInput): Promise<AssetCategory> {
+    try {
+      const category = await this.prisma.assetCategory.update({
+        where: { id },
+        data: input
+      });
+
+      return this.toAssetCategory(category);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Asset category with id "${id}" not found`,
+        uniqueMessage:
+          input.name !== undefined
+            ? `Asset category "${input.name}" already exists`
+            : 'An asset category with the same unique value already exists'
+      });
+    }
+  }
+
+  async removeCategory(id: string): Promise<void> {
+    try {
+      await this.prisma.assetCategory.delete({
+        where: { id }
+      });
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Asset category with id "${id}" not found`
+      });
+    }
+  }
+
   async getCategoryById(id: string): Promise<AssetCategory> {
     const category = await this.prisma.assetCategory.findUnique({
       where: { id }
@@ -498,6 +701,12 @@ export class PrismaAssetsRepository implements AssetsRepository {
     }
 
     return this.toAssetCategory(category);
+  }
+
+  countAssetsByCategoryId(id: string): Promise<number> {
+    return this.prisma.asset.count({
+      where: { categoryId: id }
+    });
   }
 
   async listStatuses(): Promise<AssetStatus[]> {
@@ -522,6 +731,37 @@ export class PrismaAssetsRepository implements AssetsRepository {
     }
   }
 
+  async updateStatus(id: string, input: UpdateAssetStatusInput): Promise<AssetStatus> {
+    try {
+      const status = await this.prisma.assetStatus.update({
+        where: { id },
+        data: input
+      });
+
+      return this.toAssetStatus(status);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Asset status with id "${id}" not found`,
+        uniqueMessage:
+          input.name !== undefined
+            ? `Asset status "${input.name}" already exists`
+            : 'An asset status with the same unique value already exists'
+      });
+    }
+  }
+
+  async removeStatus(id: string): Promise<void> {
+    try {
+      await this.prisma.assetStatus.delete({
+        where: { id }
+      });
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Asset status with id "${id}" not found`
+      });
+    }
+  }
+
   async getStatusById(id: string): Promise<AssetStatus> {
     const status = await this.prisma.assetStatus.findUnique({
       where: { id }
@@ -532,6 +772,12 @@ export class PrismaAssetsRepository implements AssetsRepository {
     }
 
     return this.toAssetStatus(status);
+  }
+
+  countAssetsByStatusId(id: string): Promise<number> {
+    return this.prisma.asset.count({
+      where: { statusId: id }
+    });
   }
 
   async listInterventionTypes(): Promise<InterventionType[]> {
@@ -556,6 +802,40 @@ export class PrismaAssetsRepository implements AssetsRepository {
     }
   }
 
+  async updateInterventionType(
+    id: string,
+    input: UpdateInterventionTypeInput
+  ): Promise<InterventionType> {
+    try {
+      const interventionType = await this.prisma.interventionType.update({
+        where: { id },
+        data: input
+      });
+
+      return this.toInterventionType(interventionType);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Intervention type with id "${id}" not found`,
+        uniqueMessage:
+          input.name !== undefined
+            ? `Intervention type "${input.name}" already exists`
+            : 'An intervention type with the same unique value already exists'
+      });
+    }
+  }
+
+  async removeInterventionType(id: string): Promise<void> {
+    try {
+      await this.prisma.interventionType.delete({
+        where: { id }
+      });
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Intervention type with id "${id}" not found`
+      });
+    }
+  }
+
   async getInterventionTypeById(id: string): Promise<InterventionType> {
     const interventionType = await this.prisma.interventionType.findUnique({
       where: { id }
@@ -566,6 +846,12 @@ export class PrismaAssetsRepository implements AssetsRepository {
     }
 
     return this.toInterventionType(interventionType);
+  }
+
+  countMaintenanceLogsByInterventionTypeId(id: string): Promise<number> {
+    return this.prisma.maintenanceLog.count({
+      where: { interventionTypeId: id }
+    });
   }
 
   async getAssetFinance(assetId: string): Promise<AssetFinanceData | null> {
@@ -609,6 +895,21 @@ export class PrismaAssetsRepository implements AssetsRepository {
     return assignments.map((assignment) => this.toAssetAssignment(assignment));
   }
 
+  async getAssignmentById(assetId: string, assignmentId: string): Promise<AssetAssignment> {
+    const assignment = await this.prisma.assetAssignment.findFirst({
+      where: {
+        id: assignmentId,
+        assetId
+      }
+    });
+
+    if (!assignment) {
+      throw new HttpError(404, `Asset assignment with id "${assignmentId}" not found`);
+    }
+
+    return this.toAssetAssignment(assignment);
+  }
+
   async createAssignment(
     assetId: string,
     input: CreateAssetAssignmentInput
@@ -626,6 +927,34 @@ export class PrismaAssetsRepository implements AssetsRepository {
     return this.toAssetAssignment(assignment);
   }
 
+  async updateAssignment(
+    assetId: string,
+    assignmentId: string,
+    input: UpdateAssetAssignmentInput
+  ): Promise<AssetAssignment> {
+    await this.getAssignmentById(assetId, assignmentId);
+
+    const assignment = await this.prisma.assetAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        ...(input.employeeId ? { employeeId: input.employeeId } : {}),
+        ...(input.locationId ? { locationId: input.locationId } : {}),
+        ...(input.startDate ? { startDate: new Date(input.startDate) } : {}),
+        ...(input.endDate !== undefined ? { endDate: input.endDate ? new Date(input.endDate) : null } : {})
+      }
+    });
+
+    return this.toAssetAssignment(assignment);
+  }
+
+  async removeAssignment(assetId: string, assignmentId: string): Promise<void> {
+    await this.getAssignmentById(assetId, assignmentId);
+
+    await this.prisma.assetAssignment.delete({
+      where: { id: assignmentId }
+    });
+  }
+
   async listMaintenanceLogsByAssetId(assetId: string): Promise<MaintenanceLog[]> {
     const maintenanceLogs = await this.prisma.maintenanceLog.findMany({
       where: { assetId },
@@ -633,6 +962,21 @@ export class PrismaAssetsRepository implements AssetsRepository {
     });
 
     return maintenanceLogs.map((log) => this.toMaintenanceLog(log));
+  }
+
+  async getMaintenanceLogById(assetId: string, maintenanceLogId: string): Promise<MaintenanceLog> {
+    const maintenanceLog = await this.prisma.maintenanceLog.findFirst({
+      where: {
+        id: maintenanceLogId,
+        assetId
+      }
+    });
+
+    if (!maintenanceLog) {
+      throw new HttpError(404, `Maintenance log with id "${maintenanceLogId}" not found`);
+    }
+
+    return this.toMaintenanceLog(maintenanceLog);
   }
 
   async createMaintenanceLog(
@@ -650,6 +994,34 @@ export class PrismaAssetsRepository implements AssetsRepository {
     });
 
     return this.toMaintenanceLog(maintenanceLog);
+  }
+
+  async updateMaintenanceLog(
+    assetId: string,
+    maintenanceLogId: string,
+    input: UpdateMaintenanceLogInput
+  ): Promise<MaintenanceLog> {
+    await this.getMaintenanceLogById(assetId, maintenanceLogId);
+
+    const maintenanceLog = await this.prisma.maintenanceLog.update({
+      where: { id: maintenanceLogId },
+      data: {
+        ...(input.interventionTypeId ? { interventionTypeId: input.interventionTypeId } : {}),
+        ...(input.description !== undefined ? { description: input.description ?? null } : {}),
+        ...(input.interventionCost !== undefined ? { interventionCost: input.interventionCost ?? null } : {}),
+        ...(input.provider !== undefined ? { provider: input.provider ?? null } : {})
+      }
+    });
+
+    return this.toMaintenanceLog(maintenanceLog);
+  }
+
+  async removeMaintenanceLog(assetId: string, maintenanceLogId: string): Promise<void> {
+    await this.getMaintenanceLogById(assetId, maintenanceLogId);
+
+    await this.prisma.maintenanceLog.delete({
+      where: { id: maintenanceLogId }
+    });
   }
 
   private buildAssetWhereInput(input: ListAssetsQuery): TenantAssetWhereInput {

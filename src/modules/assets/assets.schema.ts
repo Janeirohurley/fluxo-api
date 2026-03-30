@@ -26,6 +26,15 @@ export const createInterventionTypeSchema = z.object({
   name: trimmedString(2, 80)
 });
 
+const buildReferenceUpdateSchema = (schema: z.ZodObject<{ name: z.ZodString }>) =>
+  schema.partial().refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided for update'
+  });
+
+export const updateAssetCategorySchema = buildReferenceUpdateSchema(createAssetCategorySchema);
+export const updateAssetStatusSchema = buildReferenceUpdateSchema(createAssetStatusSchema);
+export const updateInterventionTypeSchema = buildReferenceUpdateSchema(createInterventionTypeSchema);
+
 export const createAssetSchema = z.object({
   inventoryCode: trimmedString(2, 60),
   name: trimmedString(2, 120),
@@ -71,15 +80,37 @@ export const upsertAssetFinanceSchema = z
     }
   });
 
+const assetAssignmentShape = {
+  employeeId: uuidSchema,
+  locationId: uuidSchema,
+  startDate: dateStringSchema,
+  endDate: dateStringSchema.optional()
+} satisfies z.ZodRawShape;
+
 export const createAssetAssignmentSchema = z
-  .object({
-    employeeId: uuidSchema,
-    locationId: uuidSchema,
-    startDate: dateStringSchema,
-    endDate: dateStringSchema.optional()
-  })
+  .object(assetAssignmentShape)
   .superRefine((value, context) => {
     if (value.endDate && value.endDate < value.startDate) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endDate'],
+        message: 'End date cannot be before start date'
+      });
+    }
+  });
+
+export const updateAssetAssignmentSchema = z
+  .object({
+    employeeId: assetAssignmentShape.employeeId.optional(),
+    locationId: assetAssignmentShape.locationId.optional(),
+    startDate: assetAssignmentShape.startDate.optional(),
+    endDate: assetAssignmentShape.endDate
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided for update'
+  })
+  .superRefine((value, context) => {
+    if (value.startDate && value.endDate && value.endDate < value.startDate) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['endDate'],
@@ -95,12 +126,24 @@ export const createMaintenanceLogSchema = z.object({
   provider: optionalTrimmedString(120)
 });
 
+export const updateMaintenanceLogSchema = createMaintenanceLogSchema.partial().refine(
+  (value) => Object.keys(value).length > 0,
+  {
+    message: 'At least one field must be provided for update'
+  }
+);
+
 export type CreateAssetCategoryInput = z.infer<typeof createAssetCategorySchema>;
 export type CreateAssetStatusInput = z.infer<typeof createAssetStatusSchema>;
 export type CreateInterventionTypeInput = z.infer<typeof createInterventionTypeSchema>;
+export type UpdateAssetCategoryInput = z.infer<typeof updateAssetCategorySchema>;
+export type UpdateAssetStatusInput = z.infer<typeof updateAssetStatusSchema>;
+export type UpdateInterventionTypeInput = z.infer<typeof updateInterventionTypeSchema>;
 export type CreateAssetInput = z.infer<typeof createAssetSchema>;
 export type UpdateAssetInput = z.infer<typeof updateAssetSchema>;
 export type ListAssetsQuery = z.infer<typeof listAssetsQuerySchema>;
 export type UpsertAssetFinanceInput = z.infer<typeof upsertAssetFinanceSchema>;
 export type CreateAssetAssignmentInput = z.infer<typeof createAssetAssignmentSchema>;
+export type UpdateAssetAssignmentInput = z.infer<typeof updateAssetAssignmentSchema>;
 export type CreateMaintenanceLogInput = z.infer<typeof createMaintenanceLogSchema>;
+export type UpdateMaintenanceLogInput = z.infer<typeof updateMaintenanceLogSchema>;

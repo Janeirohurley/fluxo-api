@@ -6,6 +6,11 @@ import {
   type ListAssetsQuery,
   type CreateInterventionTypeInput,
   type CreateMaintenanceLogInput,
+  type UpdateAssetCategoryInput,
+  type UpdateAssetAssignmentInput,
+  type UpdateMaintenanceLogInput,
+  type UpdateAssetStatusInput,
+  type UpdateInterventionTypeInput,
   type UpsertAssetFinanceInput
 } from './assets.schema';
 import { type PaginatedResult } from '../../shared/pagination';
@@ -74,3 +79,9 @@ export type AssetRelationSummary = {
 };
 
 export type AssetListFilters = ListAssetsQuery;
+
+export type UpdateAssetCategory = UpdateAssetCategoryInput;
+export type UpdateAssetStatus = UpdateAssetStatusInput;
+export type UpdateInterventionType = UpdateInterventionTypeInput;
+export type UpdateAssetAssignment = UpdateAssetAssignmentInput;
+export type UpdateMaintenanceLog = UpdateMaintenanceLogInput;

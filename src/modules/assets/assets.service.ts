@@ -7,6 +7,11 @@ import {
   type ListAssetsQuery,
   type CreateInterventionTypeInput,
   type CreateMaintenanceLogInput,
+  type UpdateAssetCategoryInput,
+  type UpdateAssetAssignmentInput,
+  type UpdateMaintenanceLogInput,
+  type UpdateAssetStatusInput,
+  type UpdateInterventionTypeInput,
   type UpdateAssetInput,
   type UpsertAssetFinanceInput
 } from './assets.schema';
@@ -86,6 +91,22 @@ export class AssetsService {
     return this.repository.createCategory(input);
   }
 
+  updateCategory(id: string, input: UpdateAssetCategoryInput): Promise<AssetCategory> {
+    return this.repository.updateCategory(id, input);
+  }
+
+  async removeCategory(id: string): Promise<void> {
+    const assetsCount = await this.repository.countAssetsByCategoryId(id);
+
+    if (assetsCount > 0) {
+      throw new HttpError(409, 'Cannot delete an asset category that is already used by assets', {
+        assetsCount
+      });
+    }
+
+    await this.repository.removeCategory(id);
+  }
+
   listStatuses(): Promise<AssetStatus[]> {
     return this.repository.listStatuses();
   }
@@ -94,12 +115,51 @@ export class AssetsService {
     return this.repository.createStatus(input);
   }
 
+  updateStatus(id: string, input: UpdateAssetStatusInput): Promise<AssetStatus> {
+    return this.repository.updateStatus(id, input);
+  }
+
+  async removeStatus(id: string): Promise<void> {
+    const assetsCount = await this.repository.countAssetsByStatusId(id);
+
+    if (assetsCount > 0) {
+      throw new HttpError(409, 'Cannot delete an asset status that is already used by assets', {
+        assetsCount
+      });
+    }
+
+    await this.repository.removeStatus(id);
+  }
+
   listInterventionTypes(): Promise<InterventionType[]> {
     return this.repository.listInterventionTypes();
   }
 
   createInterventionType(input: CreateInterventionTypeInput): Promise<InterventionType> {
     return this.repository.createInterventionType(input);
+  }
+
+  updateInterventionType(
+    id: string,
+    input: UpdateInterventionTypeInput
+  ): Promise<InterventionType> {
+    return this.repository.updateInterventionType(id, input);
+  }
+
+  async removeInterventionType(id: string): Promise<void> {
+    const maintenanceLogsCount = await this.repository.countMaintenanceLogsByInterventionTypeId(id);
+
+    if (maintenanceLogsCount > 0) {
+      throw new HttpError(
+        409,
+        'Cannot delete an intervention type that is already used by maintenance logs',
+        {
+          maintenanceLogsCount
+        }
+      );
+    }
+
+    await this.repository.removeInterventionType(id);
   }
 
   async getAssetFinance(assetId: string): Promise<AssetFinanceData | null> {
@@ -135,6 +195,28 @@ export class AssetsService {
     return this.repository.createAssignment(assetId, input);
   }
 
+  async updateAssignment(
+    assetId: string,
+    assignmentId: string,
+    input: UpdateAssetAssignmentInput
+  ): Promise<AssetAssignment> {
+    const existingAssignment = await this.repository.getAssignmentById(assetId, assignmentId);
+    const nextAssignment: CreateAssetAssignmentInput = {
+      employeeId: input.employeeId ?? existingAssignment.employeeId,
+      locationId: input.locationId ?? existingAssignment.locationId,
+      startDate: input.startDate ?? existingAssignment.startDate,
+      endDate: input.endDate ?? existingAssignment.endDate ?? undefined
+    };
+
+    await this.assertNoAssignmentOverlap(assetId, nextAssignment, assignmentId);
+
+    return this.repository.updateAssignment(assetId, assignmentId, input);
+  }
+
+  async removeAssignment(assetId: string, assignmentId: string): Promise<void> {
+    await this.repository.removeAssignment(assetId, assignmentId);
+  }
+
   async listMaintenanceLogsByAssetId(assetId: string): Promise<MaintenanceLog[]> {
     await this.repository.getAssetById(assetId);
     return this.repository.listMaintenanceLogsByAssetId(assetId);
@@ -150,6 +232,26 @@ export class AssetsService {
     ]);
 
     return this.repository.createMaintenanceLog(assetId, input);
+  }
+
+  async updateMaintenanceLog(
+    assetId: string,
+    maintenanceLogId: string,
+    input: UpdateMaintenanceLogInput
+  ): Promise<MaintenanceLog> {
+    const existingLog = await this.repository.getMaintenanceLogById(assetId, maintenanceLogId);
+
+    if (input.interventionTypeId) {
+      await this.repository.getInterventionTypeById(input.interventionTypeId);
+    } else {
+      await this.repository.getInterventionTypeById(existingLog.interventionTypeId);
+    }
+
+    return this.repository.updateMaintenanceLog(assetId, maintenanceLogId, input);
+  }
+
+  async removeMaintenanceLog(assetId: string, maintenanceLogId: string): Promise<void> {
+    await this.repository.removeMaintenanceLog(assetId, maintenanceLogId);
   }
 
   private async assertAssetCanUseStatus(assetId: string, statusName: string) {
@@ -172,10 +274,12 @@ export class AssetsService {
 
   private async assertNoAssignmentOverlap(
     assetId: string,
-    input: CreateAssetAssignmentInput
+    input: CreateAssetAssignmentInput,
+    ignoreAssignmentId?: string
   ) {
     const assignments = await this.repository.listAssignmentsByAssetId(assetId);
     const hasOverlap = assignments.some((assignment) =>
+      assignment.id !== ignoreAssignmentId &&
       this.dateRangesOverlap(
         input.startDate,
         input.endDate,

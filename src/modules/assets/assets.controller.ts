@@ -8,6 +8,11 @@ import {
   createInterventionTypeSchema,
   listAssetsQuerySchema,
   createMaintenanceLogSchema,
+  updateAssetCategorySchema,
+  updateAssetAssignmentSchema,
+  updateMaintenanceLogSchema,
+  updateAssetStatusSchema,
+  updateInterventionTypeSchema,
   updateAssetSchema,
   upsertAssetFinanceSchema
 } from './assets.schema';
@@ -79,6 +84,22 @@ export class AssetsController {
     });
   };
 
+  updateCategory = async (req: Request<{ id: string }>, res: Response) => {
+    const payload = updateAssetCategorySchema.parse(req.body);
+    const category = await this.assetsService.updateCategory(req.params.id, payload);
+
+    res.status(200).json({
+      message: 'Asset category updated successfully',
+      data: category
+    });
+  };
+
+  removeCategory = async (req: Request<{ id: string }>, res: Response) => {
+    await this.assetsService.removeCategory(req.params.id);
+
+    res.status(204).send();
+  };
+
   listStatuses = async (_req: Request, res: Response) => {
     res.status(200).json({
       data: await this.assetsService.listStatuses()
@@ -95,6 +116,22 @@ export class AssetsController {
     });
   };
 
+  updateStatus = async (req: Request<{ id: string }>, res: Response) => {
+    const payload = updateAssetStatusSchema.parse(req.body);
+    const status = await this.assetsService.updateStatus(req.params.id, payload);
+
+    res.status(200).json({
+      message: 'Asset status updated successfully',
+      data: status
+    });
+  };
+
+  removeStatus = async (req: Request<{ id: string }>, res: Response) => {
+    await this.assetsService.removeStatus(req.params.id);
+
+    res.status(204).send();
+  };
+
   listInterventionTypes = async (_req: Request, res: Response) => {
     res.status(200).json({
       data: await this.assetsService.listInterventionTypes()
@@ -109,6 +146,22 @@ export class AssetsController {
       message: 'Intervention type created successfully',
       data: interventionType
     });
+  };
+
+  updateInterventionType = async (req: Request<{ id: string }>, res: Response) => {
+    const payload = updateInterventionTypeSchema.parse(req.body);
+    const interventionType = await this.assetsService.updateInterventionType(req.params.id, payload);
+
+    res.status(200).json({
+      message: 'Intervention type updated successfully',
+      data: interventionType
+    });
+  };
+
+  removeInterventionType = async (req: Request<{ id: string }>, res: Response) => {
+    await this.assetsService.removeInterventionType(req.params.id);
+
+    res.status(204).send();
   };
 
   getAssetFinance = async (req: Request<{ id: string }>, res: Response) => {
@@ -147,6 +200,32 @@ export class AssetsController {
     });
   };
 
+  updateAssignment = async (
+    req: Request<{ id: string; assignmentId: string }>,
+    res: Response
+  ) => {
+    const payload = updateAssetAssignmentSchema.parse(req.body);
+    const assignment = await this.assetsService.updateAssignment(
+      req.params.id,
+      req.params.assignmentId,
+      payload
+    );
+
+    res.status(200).json({
+      message: 'Asset assignment updated successfully',
+      data: assignment
+    });
+  };
+
+  removeAssignment = async (
+    req: Request<{ id: string; assignmentId: string }>,
+    res: Response
+  ) => {
+    await this.assetsService.removeAssignment(req.params.id, req.params.assignmentId);
+
+    res.status(204).send();
+  };
+
   listMaintenanceLogs = async (req: Request<{ id: string }>, res: Response) => {
     const logs = await this.assetsService.listMaintenanceLogsByAssetId(req.params.id);
 
@@ -163,5 +242,31 @@ export class AssetsController {
       message: 'Maintenance log created successfully',
       data: log
     });
+  };
+
+  updateMaintenanceLog = async (
+    req: Request<{ id: string; maintenanceLogId: string }>,
+    res: Response
+  ) => {
+    const payload = updateMaintenanceLogSchema.parse(req.body);
+    const log = await this.assetsService.updateMaintenanceLog(
+      req.params.id,
+      req.params.maintenanceLogId,
+      payload
+    );
+
+    res.status(200).json({
+      message: 'Maintenance log updated successfully',
+      data: log
+    });
+  };
+
+  removeMaintenanceLog = async (
+    req: Request<{ id: string; maintenanceLogId: string }>,
+    res: Response
+  ) => {
+    await this.assetsService.removeMaintenanceLog(req.params.id, req.params.maintenanceLogId);
+
+    res.status(204).send();
   };
 }

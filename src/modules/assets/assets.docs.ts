@@ -59,6 +59,16 @@ export function getAssetsModuleDocumentation() {
         description: 'Creates an asset category'
       },
       {
+        method: 'PATCH',
+        path: '/api/assets/categories/:id',
+        description: 'Updates an asset category'
+      },
+      {
+        method: 'DELETE',
+        path: '/api/assets/categories/:id',
+        description: 'Deletes an asset category when it is not used by any asset'
+      },
+      {
         method: 'GET',
         path: '/api/assets/statuses',
         description: 'Lists asset statuses'
@@ -69,6 +79,16 @@ export function getAssetsModuleDocumentation() {
         description: 'Creates an asset status'
       },
       {
+        method: 'PATCH',
+        path: '/api/assets/statuses/:id',
+        description: 'Updates an asset status'
+      },
+      {
+        method: 'DELETE',
+        path: '/api/assets/statuses/:id',
+        description: 'Deletes an asset status when it is not used by any asset'
+      },
+      {
         method: 'GET',
         path: '/api/assets/intervention-types',
         description: 'Lists maintenance intervention types'
@@ -77,6 +97,16 @@ export function getAssetsModuleDocumentation() {
         method: 'POST',
         path: '/api/assets/intervention-types',
         description: 'Creates a maintenance intervention type'
+      },
+      {
+        method: 'PATCH',
+        path: '/api/assets/intervention-types/:id',
+        description: 'Updates a maintenance intervention type'
+      },
+      {
+        method: 'DELETE',
+        path: '/api/assets/intervention-types/:id',
+        description: 'Deletes a maintenance intervention type when it is not used by maintenance logs'
       },
       {
         method: 'GET',
@@ -99,6 +129,16 @@ export function getAssetsModuleDocumentation() {
         description: 'Creates a new asset assignment'
       },
       {
+        method: 'PATCH',
+        path: '/api/assets/:id/assignments/:assignmentId',
+        description: 'Updates an existing asset assignment'
+      },
+      {
+        method: 'DELETE',
+        path: '/api/assets/:id/assignments/:assignmentId',
+        description: 'Deletes an existing asset assignment'
+      },
+      {
         method: 'GET',
         path: '/api/assets/:id/maintenance',
         description: 'Lists maintenance logs for an asset'
@@ -107,6 +147,16 @@ export function getAssetsModuleDocumentation() {
         method: 'POST',
         path: '/api/assets/:id/maintenance',
         description: 'Creates a maintenance log for an asset'
+      },
+      {
+        method: 'PATCH',
+        path: '/api/assets/:id/maintenance/:maintenanceLogId',
+        description: 'Updates a maintenance log for an asset'
+      },
+      {
+        method: 'DELETE',
+        path: '/api/assets/:id/maintenance/:maintenanceLogId',
+        description: 'Deletes a maintenance log for an asset'
       }
     ],
     samplePayloads: {
