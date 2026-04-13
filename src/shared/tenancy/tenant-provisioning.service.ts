@@ -158,6 +158,32 @@ export class TenantProvisioningService {
         );
       }
 
+      for (const [name, accountType] of [
+        ['Main Bank', 'bank'],
+        ['Petty Cash', 'cash'],
+        ['Mobile Money', 'mobile_money']
+      ] as const) {
+        await client.query(
+          `
+            INSERT INTO treasury_accounts (
+              id,
+              name,
+              account_type,
+              currency,
+              opening_balance,
+              opening_balance_date,
+              is_active,
+              accounting_account_id,
+              created_at,
+              updated_at
+            )
+            VALUES ($1, $2, $3, 'BIF', 0, CURRENT_DATE, TRUE, NULL, NOW(), NOW())
+            ON CONFLICT (name) DO NOTHING
+          `,
+          [randomUUID(), name, accountType]
+        );
+      }
+
       for (const name of ['Administrator', 'Manager', 'Officer', 'Technician', 'Staff']) {
         await client.query(
           `

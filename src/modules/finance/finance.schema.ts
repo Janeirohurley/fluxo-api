@@ -50,11 +50,68 @@ export const updateAccountingAccountSchema = createAccountingAccountSchema
     message: 'At least one field must be provided for update'
   });
 
+export const createTreasuryAccountSchema = z.object({
+  name: trimmedString(2, 120),
+  accountType: z.enum(['bank', 'cash', 'mobile_money']),
+  currency: trimmedString(2, 10).default('BIF'),
+  openingBalance: z.number(),
+  openingBalanceDate: dateStringSchema,
+  isActive: z.boolean().default(true),
+  accountingAccountId: uuidSchema.optional()
+});
+
+export const updateTreasuryAccountSchema = createTreasuryAccountSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided for update'
+  });
+
+const treasuryTransferSchemaBase = z.object({
+  fromTreasuryAccountId: uuidSchema,
+  toTreasuryAccountId: uuidSchema,
+  amount: z.number().positive(),
+  transferDate: dateStringSchema,
+  referenceNumber: optionalTrimmedString(120),
+  description: optionalTrimmedString(500)
+});
+
+export const createTreasuryTransferSchema = treasuryTransferSchemaBase.superRefine(
+  (value, context) => {
+    if (value.fromTreasuryAccountId === value.toTreasuryAccountId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['toTreasuryAccountId'],
+        message: 'fromTreasuryAccountId and toTreasuryAccountId must be different'
+      });
+    }
+  }
+);
+
+export const updateTreasuryTransferSchema = treasuryTransferSchemaBase
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided for update'
+  })
+  .superRefine((value, context) => {
+    if (
+      value.fromTreasuryAccountId &&
+      value.toTreasuryAccountId &&
+      value.fromTreasuryAccountId === value.toTreasuryAccountId
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['toTreasuryAccountId'],
+        message: 'fromTreasuryAccountId and toTreasuryAccountId must be different'
+      });
+    }
+  });
+
 export const createTransactionSchema = z.object({
   transactionTypeId: uuidSchema,
   accountingCategory: trimmedString(2, 120),
   amount: z.number().positive(),
   paymentMethodId: uuidSchema,
+  treasuryAccountId: uuidSchema.optional(),
   referenceNumber: optionalTrimmedString(120),
   transactionDate: dateStringSchema,
   description: optionalTrimmedString(500),
@@ -75,11 +132,30 @@ export const listTransactionsQuerySchema = createPaginationQuerySchema({
   search: optionalSearchSchema,
   transactionTypeId: uuidSchema.optional(),
   paymentMethodId: uuidSchema.optional(),
+  treasuryAccountId: uuidSchema.optional(),
   assetId: uuidSchema.optional(),
   accountingCategory: z.string().trim().min(1).max(120).optional(),
   dateFrom: dateStringSchema.optional(),
   dateTo: dateStringSchema.optional(),
   sortBy: z.enum(['transactionDate', 'amount', 'createdAt', 'updatedAt']).default('transactionDate'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc')
+}).superRefine((value, context) => {
+  if (value.dateFrom && value.dateTo && value.dateTo < value.dateFrom) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['dateTo'],
+      message: 'dateTo cannot be before dateFrom'
+    });
+  }
+});
+
+export const listTreasuryTransfersQuerySchema = createPaginationQuerySchema({
+  search: optionalSearchSchema,
+  fromTreasuryAccountId: uuidSchema.optional(),
+  toTreasuryAccountId: uuidSchema.optional(),
+  dateFrom: dateStringSchema.optional(),
+  dateTo: dateStringSchema.optional(),
+  sortBy: z.enum(['transferDate', 'amount', 'createdAt', 'updatedAt']).default('transferDate'),
   sortOrder: z.enum(['asc', 'desc']).default('desc')
 }).superRefine((value, context) => {
   if (value.dateFrom && value.dateTo && value.dateTo < value.dateFrom) {
@@ -208,9 +284,14 @@ export type CreateTransactionTypeInput = z.infer<typeof createTransactionTypeSch
 export type UpdateTransactionTypeInput = z.infer<typeof updateTransactionTypeSchema>;
 export type CreateAccountingAccountInput = z.infer<typeof createAccountingAccountSchema>;
 export type UpdateAccountingAccountInput = z.infer<typeof updateAccountingAccountSchema>;
+export type CreateTreasuryAccountInput = z.infer<typeof createTreasuryAccountSchema>;
+export type UpdateTreasuryAccountInput = z.infer<typeof updateTreasuryAccountSchema>;
+export type CreateTreasuryTransferInput = z.infer<typeof createTreasuryTransferSchema>;
+export type UpdateTreasuryTransferInput = z.infer<typeof updateTreasuryTransferSchema>;
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
 export type ListTransactionsQuery = z.infer<typeof listTransactionsQuerySchema>;
+export type ListTreasuryTransfersQuery = z.infer<typeof listTreasuryTransfersQuerySchema>;
 export type CreateJournalEntryLineInput = z.infer<typeof createJournalEntryLineSchema>;
 export type CreateJournalEntryInput = z.infer<typeof createJournalEntrySchema>;
 export type ListJournalEntriesQuery = z.infer<typeof listJournalEntriesQuerySchema>;

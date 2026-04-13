@@ -29,6 +29,14 @@ export function getFinanceModuleDocumentation() {
       { method: 'POST', path: '/api/finance/accounts', description: 'Creates an accounting account' },
       { method: 'PATCH', path: '/api/finance/accounts/:id', description: 'Updates an accounting account' },
       { method: 'DELETE', path: '/api/finance/accounts/:id', description: 'Deletes an accounting account when it is unused' },
+      { method: 'GET', path: '/api/finance/treasury-accounts', description: 'Lists treasury accounts with current balances' },
+      { method: 'POST', path: '/api/finance/treasury-accounts', description: 'Creates a treasury account' },
+      { method: 'PATCH', path: '/api/finance/treasury-accounts/:id', description: 'Updates a treasury account' },
+      { method: 'DELETE', path: '/api/finance/treasury-accounts/:id', description: 'Deletes a treasury account when it is unused' },
+      { method: 'GET', path: '/api/finance/transfers', description: 'Lists internal treasury transfers with pagination and filters' },
+      { method: 'POST', path: '/api/finance/transfers', description: 'Creates an internal treasury transfer' },
+      { method: 'PATCH', path: '/api/finance/transfers/:id', description: 'Updates an internal treasury transfer' },
+      { method: 'DELETE', path: '/api/finance/transfers/:id', description: 'Deletes an internal treasury transfer' },
       { method: 'GET', path: '/api/finance/transactions', description: 'Lists transactions with pagination and filters' },
       { method: 'POST', path: '/api/finance/transactions', description: 'Creates a transaction' },
       { method: 'GET', path: '/api/finance/transactions/:id', description: 'Returns one transaction with reference details' },
@@ -57,14 +65,31 @@ export function getFinanceModuleDocumentation() {
         accountType: 'expense',
         isActive: true
       },
+      createTreasuryTransfer: {
+        fromTreasuryAccountId: 'f0f0f0f0-0000-4000-8000-000000000001',
+        toTreasuryAccountId: 'f0f0f0f0-0000-4000-8000-000000000002',
+        amount: 100000,
+        transferDate: '2026-04-13',
+        referenceNumber: 'TR-2026-001',
+        description: 'Bank withdrawal to petty cash'
+      },
       createTransaction: {
         transactionTypeId: '11111111-1111-1111-1111-111111111111',
         accountingCategory: 'office-supplies',
         amount: 120.5,
         paymentMethodId: '22222222-2222-2222-2222-222222222222',
+        treasuryAccountId: '77777777-7777-7777-7777-777777777777',
         referenceNumber: 'TXN-1001',
         transactionDate: '2026-03-24',
         description: 'Office supplies purchase'
+      },
+      createTreasuryAccount: {
+        name: 'Main Bank',
+        accountType: 'bank',
+        currency: 'BIF',
+        openingBalance: 0,
+        openingBalanceDate: '2026-01-01',
+        isActive: true
       },
       createJournalEntry: {
         entryNumber: 'JE-2026-0001',

@@ -10,17 +10,22 @@ import {
   type CreateAccountingAccountInput,
   type CreateJournalEntryInput,
   type CreatePaymentMethodInput,
+  type CreateTreasuryAccountInput,
+  type CreateTreasuryTransferInput,
   type CreateReconciliationInput,
   type CreateReconciliationItemInput,
   type CreateTransactionInput,
   type CreateTransactionTypeInput,
   type ListJournalEntriesQuery,
   type ListReconciliationsQuery,
+  type ListTreasuryTransfersQuery,
   type ListTransactionsQuery,
   type PostJournalEntryInput,
   type UpdatePaymentMethodInput,
   type UpdateTransactionTypeInput,
   type UpdateAccountingAccountInput,
+  type UpdateTreasuryAccountInput,
+  type UpdateTreasuryTransferInput,
   type UpdateTransactionInput
 } from './finance.schema';
 import {
@@ -32,9 +37,12 @@ import {
   type JournalEntryLine,
   type JournalEntryListQueryResult,
   type PaymentMethod,
+  type TreasuryAccount,
+  type TreasuryTransfer,
   type Reconciliation,
   type ReconciliationItem,
   type ReconciliationListQueryResult,
+  type TreasuryTransferListQueryResult,
   type TransactionType
 } from './finance.types';
 
@@ -54,7 +62,19 @@ export interface FinanceRepository {
   updateAccountingAccount(id: string, input: UpdateAccountingAccountInput): Promise<AccountingAccount>;
   removeAccountingAccount(id: string): Promise<void>;
   getAccountingAccountById(id: string): Promise<AccountingAccount>;
+  listTreasuryAccounts(): Promise<TreasuryAccount[]>;
+  createTreasuryAccount(input: CreateTreasuryAccountInput): Promise<TreasuryAccount>;
+  updateTreasuryAccount(id: string, input: UpdateTreasuryAccountInput): Promise<TreasuryAccount>;
+  removeTreasuryAccount(id: string): Promise<void>;
+  getTreasuryAccountById(id: string): Promise<TreasuryAccount>;
+  listTreasuryTransfers(input: ListTreasuryTransfersQuery): Promise<TreasuryTransferListQueryResult>;
+  createTreasuryTransfer(input: CreateTreasuryTransferInput): Promise<TreasuryTransfer>;
+  updateTreasuryTransfer(id: string, input: UpdateTreasuryTransferInput): Promise<TreasuryTransfer>;
+  removeTreasuryTransfer(id: string): Promise<void>;
+  getTreasuryTransferById(id: string): Promise<TreasuryTransfer>;
+  listTreasuryTransfersByTreasuryAccountId(treasuryAccountId: string): Promise<TreasuryTransfer[]>;
   listTransactions(input: ListTransactionsQuery): Promise<FinanceTransactionListQueryResult>;
+  listTransactionsByTreasuryAccountId(treasuryAccountId: string): Promise<FinanceTransaction[]>;
   getTransactionById(id: string): Promise<FinanceTransaction>;
   createTransaction(input: CreateTransactionInput): Promise<FinanceTransaction>;
   updateTransaction(id: string, input: UpdateTransactionInput): Promise<FinanceTransaction>;
@@ -104,6 +124,8 @@ export class InMemoryFinanceRepository implements FinanceRepository {
   private readonly paymentMethods = new Map<string, PaymentMethod>();
   private readonly transactionTypes = new Map<string, TransactionType>();
   private readonly accountingAccounts = new Map<string, AccountingAccount>();
+  private readonly treasuryAccounts = new Map<string, TreasuryAccount>();
+  private readonly treasuryTransfers = new Map<string, TreasuryTransfer>();
   private readonly transactions = new Map<string, FinanceTransaction>();
   private readonly journalEntries = new Map<string, JournalEntry>();
   private readonly journalEntryLines = new Map<string, JournalEntryLine>();
@@ -287,6 +309,127 @@ export class InMemoryFinanceRepository implements FinanceRepository {
     return account;
   }
 
+  async listTreasuryAccounts(): Promise<TreasuryAccount[]> {
+    return Array.from(this.treasuryAccounts.values()).sort((left, right) =>
+      left.name.localeCompare(right.name)
+    );
+  }
+
+  async createTreasuryAccount(input: CreateTreasuryAccountInput): Promise<TreasuryAccount> {
+    this.assertUniqueName(this.treasuryAccounts, input.name, 'Treasury account');
+    const entity = this.createTimestampedEntity(input);
+    this.treasuryAccounts.set(entity.id, entity);
+    return entity;
+  }
+
+  async updateTreasuryAccount(
+    id: string,
+    input: UpdateTreasuryAccountInput
+  ): Promise<TreasuryAccount> {
+    const existing = await this.getTreasuryAccountById(id);
+    const nextName = input.name ?? existing.name;
+    this.assertUniqueName(this.treasuryAccounts, nextName, 'Treasury account', id);
+
+    const updated: TreasuryAccount = {
+      ...existing,
+      ...input,
+      updatedAt: nowIso()
+    };
+
+    this.treasuryAccounts.set(id, updated);
+    return updated;
+  }
+
+  async removeTreasuryAccount(id: string): Promise<void> {
+    await this.getTreasuryAccountById(id);
+
+    const linkedTransactions = Array.from(this.transactions.values()).some(
+      (transaction) => transaction.treasuryAccountId === id
+    );
+    const linkedTransfers = Array.from(this.treasuryTransfers.values()).some(
+      (transfer) => transfer.fromTreasuryAccountId === id || transfer.toTreasuryAccountId === id
+    );
+
+    if (linkedTransactions || linkedTransfers) {
+      throw new HttpError(
+        409,
+        'Cannot delete a treasury account that is already linked to transactions or transfers'
+      );
+    }
+
+    this.treasuryAccounts.delete(id);
+  }
+
+  async getTreasuryAccountById(id: string): Promise<TreasuryAccount> {
+    const account = this.treasuryAccounts.get(id);
+    if (!account) {
+      throw new HttpError(404, `Treasury account with id "${id}" not found`);
+    }
+
+    return account;
+  }
+
+  async listTreasuryTransfers(
+    input: ListTreasuryTransfersQuery
+  ): Promise<TreasuryTransferListQueryResult> {
+    const filtered = Array.from(this.treasuryTransfers.values())
+      .filter((transfer) => this.matchesTreasuryTransferFilters(transfer, input))
+      .sort((left, right) => {
+        const leftValue = this.getTreasuryTransferSortValue(left, input.sortBy);
+        const rightValue = this.getTreasuryTransferSortValue(right, input.sortBy);
+        return comparePrimitive(leftValue, rightValue, input.sortOrder);
+      });
+
+    return {
+      items: slicePage(filtered, input),
+      total: filtered.length
+    };
+  }
+
+  async createTreasuryTransfer(input: CreateTreasuryTransferInput): Promise<TreasuryTransfer> {
+    const entity = this.createTimestampedEntity(input);
+    this.treasuryTransfers.set(entity.id, entity);
+    return entity;
+  }
+
+  async updateTreasuryTransfer(
+    id: string,
+    input: UpdateTreasuryTransferInput
+  ): Promise<TreasuryTransfer> {
+    const existing = await this.getTreasuryTransferById(id);
+    const updated: TreasuryTransfer = {
+      ...existing,
+      ...input,
+      updatedAt: nowIso()
+    };
+    this.treasuryTransfers.set(id, updated);
+    return updated;
+  }
+
+  async removeTreasuryTransfer(id: string): Promise<void> {
+    await this.getTreasuryTransferById(id);
+    this.treasuryTransfers.delete(id);
+  }
+
+  async getTreasuryTransferById(id: string): Promise<TreasuryTransfer> {
+    const transfer = this.treasuryTransfers.get(id);
+    if (!transfer) {
+      throw new HttpError(404, `Treasury transfer with id "${id}" not found`);
+    }
+
+    return transfer;
+  }
+
+  async listTreasuryTransfersByTreasuryAccountId(
+    treasuryAccountId: string
+  ): Promise<TreasuryTransfer[]> {
+    return Array.from(this.treasuryTransfers.values()).filter(
+      (transfer) =>
+        transfer.fromTreasuryAccountId === treasuryAccountId ||
+        transfer.toTreasuryAccountId === treasuryAccountId
+    );
+  }
+
   async listTransactions(input: ListTransactionsQuery): Promise<FinanceTransactionListQueryResult> {
     const filtered = Array.from(this.transactions.values())
       .filter((transaction) => this.matchesTransactionFilters(transaction, input))
@@ -309,6 +452,12 @@ export class InMemoryFinanceRepository implements FinanceRepository {
     }
 
     return transaction;
+  }
+
+  async listTransactionsByTreasuryAccountId(treasuryAccountId: string): Promise<FinanceTransaction[]> {
+    return Array.from(this.transactions.values()).filter(
+      (transaction) => transaction.treasuryAccountId === treasuryAccountId
+    );
   }
 
   async createTransaction(input: CreateTransactionInput): Promise<FinanceTransaction> {
@@ -530,6 +679,10 @@ export class InMemoryFinanceRepository implements FinanceRepository {
       return false;
     }
 
+    if (input.treasuryAccountId && transaction.treasuryAccountId !== input.treasuryAccountId) {
+      return false;
+    }
+
     if (input.assetId && transaction.assetId !== input.assetId) {
       return false;
     }
@@ -576,6 +729,58 @@ export class InMemoryFinanceRepository implements FinanceRepository {
       case 'transactionDate':
       default:
         return transaction.transactionDate;
+    }
+  }
+
+  private matchesTreasuryTransferFilters(
+    transfer: TreasuryTransfer,
+    input: ListTreasuryTransfersQuery
+  ) {
+    if (
+      input.fromTreasuryAccountId &&
+      transfer.fromTreasuryAccountId !== input.fromTreasuryAccountId
+    ) {
+      return false;
+    }
+
+    if (input.toTreasuryAccountId && transfer.toTreasuryAccountId !== input.toTreasuryAccountId) {
+      return false;
+    }
+
+    if (input.dateFrom && transfer.transferDate < input.dateFrom) {
+      return false;
+    }
+
+    if (input.dateTo && transfer.transferDate > input.dateTo) {
+      return false;
+    }
+
+    if (!input.search) {
+      return true;
+    }
+
+    const haystack = [transfer.referenceNumber, transfer.description]
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .join(' ')
+      .toLowerCase();
+
+    return haystack.includes(input.search.toLowerCase());
+  }
+
+  private getTreasuryTransferSortValue(
+    transfer: TreasuryTransfer,
+    sortBy: ListTreasuryTransfersQuery['sortBy']
+  ) {
+    switch (sortBy) {
+      case 'amount':
+        return transfer.amount;
+      case 'createdAt':
+        return transfer.createdAt;
+      case 'updatedAt':
+        return transfer.updatedAt;
+      case 'transferDate':
+      default:
+        return transfer.transferDate;
     }
   }
 
@@ -731,6 +936,37 @@ export class InMemoryFinanceRepository implements FinanceRepository {
     ] as const) {
       const accountingAccount = this.createTimestampedEntity(account);
       this.accountingAccounts.set(accountingAccount.id, accountingAccount);
+    }
+
+    const openingBalanceDate = nowIso().slice(0, 10);
+    for (const treasuryAccount of [
+      {
+        name: 'Main Bank',
+        accountType: 'bank' as const,
+        currency: 'BIF',
+        openingBalance: 0,
+        openingBalanceDate,
+        isActive: true
+      },
+      {
+        name: 'Petty Cash',
+        accountType: 'cash' as const,
+        currency: 'BIF',
+        openingBalance: 0,
+        openingBalanceDate,
+        isActive: true
+      },
+      {
+        name: 'Mobile Money',
+        accountType: 'mobile_money' as const,
+        currency: 'BIF',
+        openingBalance: 0,
+        openingBalanceDate,
+        isActive: true
+      }
+    ]) {
+      const entity = this.createTimestampedEntity(treasuryAccount);
+      this.treasuryAccounts.set(entity.id, entity);
     }
   }
 }
@@ -961,6 +1197,214 @@ export class PrismaFinanceRepository implements FinanceRepository {
     return this.toAccountingAccount(account);
   }
 
+  async listTreasuryAccounts(): Promise<TreasuryAccount[]> {
+    const accounts = await this.prisma.treasuryAccount.findMany({
+      orderBy: [{ name: 'asc' }]
+    });
+
+    return accounts.map((account: any) => this.toTreasuryAccount(account));
+  }
+
+  async createTreasuryAccount(input: CreateTreasuryAccountInput): Promise<TreasuryAccount> {
+    try {
+      const account = await this.prisma.treasuryAccount.create({
+        data: {
+          name: input.name,
+          accountType: input.accountType,
+          currency: input.currency,
+          openingBalance: input.openingBalance,
+          openingBalanceDate: new Date(input.openingBalanceDate),
+          isActive: input.isActive,
+          accountingAccountId: input.accountingAccountId ?? null
+        }
+      });
+
+      return this.toTreasuryAccount(account);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        uniqueMessage: `Treasury account "${input.name}" already exists`,
+        relationMessage: 'The linked accounting account reference is invalid'
+      });
+    }
+  }
+
+  async updateTreasuryAccount(
+    id: string,
+    input: UpdateTreasuryAccountInput
+  ): Promise<TreasuryAccount> {
+    try {
+      const account = await this.prisma.treasuryAccount.update({
+        where: { id },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.accountType !== undefined ? { accountType: input.accountType } : {}),
+          ...(input.currency !== undefined ? { currency: input.currency } : {}),
+          ...(input.openingBalance !== undefined ? { openingBalance: input.openingBalance } : {}),
+          ...(input.openingBalanceDate !== undefined
+            ? { openingBalanceDate: new Date(input.openingBalanceDate) }
+            : {}),
+          ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+          ...(input.accountingAccountId !== undefined
+            ? { accountingAccountId: input.accountingAccountId ?? null }
+            : {})
+        }
+      });
+
+      return this.toTreasuryAccount(account);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Treasury account with id "${id}" not found`,
+        uniqueMessage:
+          input.name !== undefined
+            ? `Treasury account "${input.name}" already exists`
+            : 'A treasury account with the same unique value already exists',
+        relationMessage: 'The linked accounting account reference is invalid'
+      });
+    }
+  }
+
+  async removeTreasuryAccount(id: string): Promise<void> {
+    try {
+      await this.prisma.treasuryAccount.delete({
+        where: { id }
+      });
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Treasury account with id "${id}" not found`,
+        relationMessage:
+          'Cannot delete a treasury account that is already linked to transactions or transfers'
+      });
+    }
+  }
+
+  async getTreasuryAccountById(id: string): Promise<TreasuryAccount> {
+    const account = await this.prisma.treasuryAccount.findUnique({
+      where: { id }
+    });
+
+    if (!account) {
+      throw new HttpError(404, `Treasury account with id "${id}" not found`);
+    }
+
+    return this.toTreasuryAccount(account);
+  }
+
+  async listTreasuryTransfers(
+    input: ListTreasuryTransfersQuery
+  ): Promise<TreasuryTransferListQueryResult> {
+    const where = this.buildTreasuryTransferWhereInput(input);
+    const [transfers, total] = await this.prisma.$transaction([
+      this.prisma.treasuryTransfer.findMany({
+        where,
+        orderBy: {
+          [input.sortBy]: input.sortOrder
+        },
+        skip: (input.page - 1) * input.pageSize,
+        take: input.pageSize
+      }),
+      this.prisma.treasuryTransfer.count({
+        where
+      })
+    ]);
+
+    return {
+      items: transfers.map((transfer: any) => this.toTreasuryTransfer(transfer)),
+      total
+    };
+  }
+
+  async createTreasuryTransfer(input: CreateTreasuryTransferInput): Promise<TreasuryTransfer> {
+    try {
+      const transfer = await this.prisma.treasuryTransfer.create({
+        data: {
+          fromTreasuryAccountId: input.fromTreasuryAccountId,
+          toTreasuryAccountId: input.toTreasuryAccountId,
+          amount: input.amount,
+          transferDate: new Date(input.transferDate),
+          referenceNumber: input.referenceNumber ?? null,
+          description: input.description ?? null
+        }
+      });
+
+      return this.toTreasuryTransfer(transfer);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        relationMessage: 'The linked treasury account reference is invalid'
+      });
+    }
+  }
+
+  async updateTreasuryTransfer(
+    id: string,
+    input: UpdateTreasuryTransferInput
+  ): Promise<TreasuryTransfer> {
+    try {
+      const transfer = await this.prisma.treasuryTransfer.update({
+        where: { id },
+        data: {
+          ...(input.fromTreasuryAccountId !== undefined
+            ? { fromTreasuryAccountId: input.fromTreasuryAccountId }
+            : {}),
+          ...(input.toTreasuryAccountId !== undefined
+            ? { toTreasuryAccountId: input.toTreasuryAccountId }
+            : {}),
+          ...(input.amount !== undefined ? { amount: input.amount } : {}),
+          ...(input.transferDate !== undefined
+            ? { transferDate: new Date(input.transferDate) }
+            : {}),
+          ...(input.referenceNumber !== undefined
+            ? { referenceNumber: input.referenceNumber ?? null }
+            : {}),
+          ...(input.description !== undefined ? { description: input.description ?? null } : {})
+        }
+      });
+
+      return this.toTreasuryTransfer(transfer);
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Treasury transfer with id "${id}" not found`,
+        relationMessage: 'The linked treasury account reference is invalid'
+      });
+    }
+  }
+
+  async removeTreasuryTransfer(id: string): Promise<void> {
+    try {
+      await this.prisma.treasuryTransfer.delete({
+        where: { id }
+      });
+    } catch (error) {
+      this.rethrowKnownError(error, {
+        notFoundMessage: `Treasury transfer with id "${id}" not found`
+      });
+    }
+  }
+
+  async getTreasuryTransferById(id: string): Promise<TreasuryTransfer> {
+    const transfer = await this.prisma.treasuryTransfer.findUnique({
+      where: { id }
+    });
+
+    if (!transfer) {
+      throw new HttpError(404, `Treasury transfer with id "${id}" not found`);
+    }
+
+    return this.toTreasuryTransfer(transfer);
+  }
+
+  async listTreasuryTransfersByTreasuryAccountId(
+    treasuryAccountId: string
+  ): Promise<TreasuryTransfer[]> {
+    const transfers = await this.prisma.treasuryTransfer.findMany({
+      where: {
+        OR: [{ fromTreasuryAccountId: treasuryAccountId }, { toTreasuryAccountId: treasuryAccountId }]
+      },
+      orderBy: { transferDate: 'asc' }
+    });
+
+    return transfers.map((transfer: any) => this.toTreasuryTransfer(transfer));
+  }
+
   async listTransactions(input: ListTransactionsQuery): Promise<FinanceTransactionListQueryResult> {
     const where = this.buildTransactionWhereInput(input);
     const [transactions, total] = await this.prisma.$transaction([
@@ -983,6 +1427,15 @@ export class PrismaFinanceRepository implements FinanceRepository {
     };
   }
 
+  async listTransactionsByTreasuryAccountId(treasuryAccountId: string): Promise<FinanceTransaction[]> {
+    const transactions = await this.prisma.financeTransaction.findMany({
+      where: { treasuryAccountId },
+      orderBy: { transactionDate: 'asc' }
+    });
+
+    return transactions.map((transaction: any) => this.toFinanceTransaction(transaction));
+  }
+
   async getTransactionById(id: string): Promise<FinanceTransaction> {
     const transaction = await this.prisma.financeTransaction.findUnique({
       where: { id }
@@ -1003,6 +1456,7 @@ export class PrismaFinanceRepository implements FinanceRepository {
           accountingCategory: input.accountingCategory,
           amount: input.amount,
           paymentMethodId: input.paymentMethodId,
+          treasuryAccountId: input.treasuryAccountId ?? null,
           referenceNumber: input.referenceNumber ?? null,
           transactionDate: new Date(input.transactionDate),
           description: input.description ?? null,
@@ -1034,6 +1488,9 @@ export class PrismaFinanceRepository implements FinanceRepository {
             : {}),
           ...(input.amount !== undefined ? { amount: input.amount } : {}),
           ...(input.paymentMethodId !== undefined ? { paymentMethodId: input.paymentMethodId } : {}),
+          ...(input.treasuryAccountId !== undefined
+            ? { treasuryAccountId: input.treasuryAccountId ?? null }
+            : {}),
           ...(input.referenceNumber !== undefined
             ? { referenceNumber: input.referenceNumber ?? null }
             : {}),
@@ -1354,11 +1811,39 @@ export class PrismaFinanceRepository implements FinanceRepository {
     return {
       ...(input.transactionTypeId ? { transactionTypeId: input.transactionTypeId } : {}),
       ...(input.paymentMethodId ? { paymentMethodId: input.paymentMethodId } : {}),
+      ...(input.treasuryAccountId ? { treasuryAccountId: input.treasuryAccountId } : {}),
       ...(input.assetId ? { assetId: input.assetId } : {}),
       ...(input.accountingCategory ? { accountingCategory: input.accountingCategory } : {}),
       ...(input.dateFrom || input.dateTo
         ? {
             transactionDate: {
+              ...(input.dateFrom ? { gte: new Date(input.dateFrom) } : {}),
+              ...(input.dateTo ? { lte: new Date(input.dateTo) } : {})
+            }
+          }
+        : {}),
+      ...(search ?? {})
+    };
+  }
+
+  private buildTreasuryTransferWhereInput(input: ListTreasuryTransfersQuery) {
+    const search = input.search
+      ? {
+          OR: [
+            { referenceNumber: { contains: input.search, mode: 'insensitive' as const } },
+            { description: { contains: input.search, mode: 'insensitive' as const } }
+          ]
+        }
+      : undefined;
+
+    return {
+      ...(input.fromTreasuryAccountId
+        ? { fromTreasuryAccountId: input.fromTreasuryAccountId }
+        : {}),
+      ...(input.toTreasuryAccountId ? { toTreasuryAccountId: input.toTreasuryAccountId } : {}),
+      ...(input.dateFrom || input.dateTo
+        ? {
+            transferDate: {
               ...(input.dateFrom ? { gte: new Date(input.dateFrom) } : {}),
               ...(input.dateTo ? { lte: new Date(input.dateTo) } : {})
             }
@@ -1483,12 +1968,63 @@ export class PrismaFinanceRepository implements FinanceRepository {
     };
   }
 
+  private toTreasuryAccount(account: {
+    id: string;
+    name: string;
+    accountType: string;
+    currency: string;
+    openingBalance: TenantDecimal;
+    openingBalanceDate: Date;
+    isActive: boolean;
+    accountingAccountId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): TreasuryAccount {
+    return {
+      id: account.id,
+      name: account.name,
+      accountType: account.accountType as TreasuryAccount['accountType'],
+      currency: account.currency,
+      openingBalance: account.openingBalance.toNumber(),
+      openingBalanceDate: account.openingBalanceDate.toISOString().slice(0, 10),
+      isActive: account.isActive,
+      accountingAccountId: account.accountingAccountId ?? undefined,
+      createdAt: account.createdAt.toISOString(),
+      updatedAt: account.updatedAt.toISOString()
+    };
+  }
+
+  private toTreasuryTransfer(transfer: {
+    id: string;
+    fromTreasuryAccountId: string;
+    toTreasuryAccountId: string;
+    amount: TenantDecimal;
+    transferDate: Date;
+    referenceNumber: string | null;
+    description: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): TreasuryTransfer {
+    return {
+      id: transfer.id,
+      fromTreasuryAccountId: transfer.fromTreasuryAccountId,
+      toTreasuryAccountId: transfer.toTreasuryAccountId,
+      amount: transfer.amount.toNumber(),
+      transferDate: transfer.transferDate.toISOString().slice(0, 10),
+      referenceNumber: transfer.referenceNumber ?? undefined,
+      description: transfer.description ?? undefined,
+      createdAt: transfer.createdAt.toISOString(),
+      updatedAt: transfer.updatedAt.toISOString()
+    };
+  }
+
   private toFinanceTransaction(transaction: {
     id: string;
     transactionTypeId: string;
     accountingCategory: string;
     amount: TenantDecimal;
     paymentMethodId: string;
+    treasuryAccountId: string | null;
     referenceNumber: string | null;
     transactionDate: Date;
     description: string | null;
@@ -1505,6 +2041,7 @@ export class PrismaFinanceRepository implements FinanceRepository {
       accountingCategory: transaction.accountingCategory,
       amount: transaction.amount.toNumber(),
       paymentMethodId: transaction.paymentMethodId,
+      treasuryAccountId: transaction.treasuryAccountId ?? undefined,
       referenceNumber: transaction.referenceNumber ?? undefined,
       transactionDate: transaction.transactionDate.toISOString().slice(0, 10),
       description: transaction.description ?? undefined,

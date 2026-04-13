@@ -4,6 +4,8 @@ import {
   type CreateJournalEntryInput,
   type CreateJournalEntryLineInput,
   type CreatePaymentMethodInput,
+  type CreateTreasuryAccountInput,
+  type CreateTreasuryTransferInput,
   type CreateReconciliationInput,
   type CreateReconciliationItemInput,
   type CreateTransactionInput,
@@ -31,6 +33,39 @@ export type AccountingAccount = EntityTimestamps &
     id: string;
   };
 
+export type TreasuryAccount = EntityTimestamps &
+  CreateTreasuryAccountInput & {
+    id: string;
+  };
+
+export type TreasuryAccountDetails = TreasuryAccount & {
+  accountingAccount: AccountingAccount | null;
+  inflowTotal: number;
+  outflowTotal: number;
+  transferInTotal: number;
+  transferOutTotal: number;
+  currentBalance: number;
+  transactionCount: number;
+  transferCount: number;
+};
+
+export type TreasuryTransfer = EntityTimestamps &
+  CreateTreasuryTransferInput & {
+    id: string;
+  };
+
+export type TreasuryTransferDetails = TreasuryTransfer & {
+  fromTreasuryAccount: TreasuryAccount | null;
+  toTreasuryAccount: TreasuryAccount | null;
+};
+
+export type TreasuryTransferListResult = PaginatedResult<TreasuryTransferDetails>;
+
+export type TreasuryTransferListQueryResult = {
+  items: TreasuryTransfer[];
+  total: number;
+};
+
 export type FinanceTransaction = EntityTimestamps &
   CreateTransactionInput & {
     id: string;
@@ -39,6 +74,7 @@ export type FinanceTransaction = EntityTimestamps &
 export type FinanceTransactionDetails = FinanceTransaction & {
   paymentMethod: PaymentMethod | null;
   transactionType: TransactionType | null;
+  treasuryAccount: TreasuryAccountDetails | null;
 };
 
 export type FinanceTransactionListResult = PaginatedResult<FinanceTransactionDetails>;

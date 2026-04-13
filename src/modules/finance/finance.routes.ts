@@ -21,6 +21,14 @@ export function createFinanceRoutes(financeController: FinanceController) {
   router.post('/accounts', financeController.createAccountingAccount);
   router.patch('/accounts/:id', financeController.updateAccountingAccount);
   router.delete('/accounts/:id', financeController.removeAccountingAccount);
+  router.get('/treasury-accounts', financeController.listTreasuryAccounts);
+  router.post('/treasury-accounts', financeController.createTreasuryAccount);
+  router.patch('/treasury-accounts/:id', financeController.updateTreasuryAccount);
+  router.delete('/treasury-accounts/:id', financeController.removeTreasuryAccount);
+  router.get('/transfers', financeController.listTreasuryTransfers);
+  router.post('/transfers', financeController.createTreasuryTransfer);
+  router.patch('/transfers/:id', financeController.updateTreasuryTransfer);
+  router.delete('/transfers/:id', financeController.removeTreasuryTransfer);
 
   router.get('/transactions', financeController.listTransactions);
   router.post('/transactions', financeController.createTransaction);

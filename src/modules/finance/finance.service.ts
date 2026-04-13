@@ -5,17 +5,22 @@ import {
   type CreateAccountingAccountInput,
   type CreateJournalEntryInput,
   type CreatePaymentMethodInput,
+  type CreateTreasuryAccountInput,
+  type CreateTreasuryTransferInput,
   type CreateReconciliationInput,
   type CreateReconciliationItemInput,
   type CreateTransactionInput,
   type CreateTransactionTypeInput,
   type ListJournalEntriesQuery,
   type ListReconciliationsQuery,
+  type ListTreasuryTransfersQuery,
   type ListTransactionsQuery,
   type PostJournalEntryInput,
   type UpdatePaymentMethodInput,
   type UpdateTransactionTypeInput,
   type UpdateAccountingAccountInput,
+  type UpdateTreasuryAccountInput,
+  type UpdateTreasuryTransferInput,
   type UpdateTransactionInput
 } from './finance.schema';
 import { type FinanceRepository } from './finance.repository';
@@ -29,6 +34,11 @@ import {
   type JournalEntryDetails,
   type JournalEntryListResult,
   type PaymentMethod,
+  type TreasuryAccount,
+  type TreasuryAccountDetails,
+  type TreasuryTransfer,
+  type TreasuryTransferDetails,
+  type TreasuryTransferListResult,
   type Reconciliation,
   type ReconciliationDetails,
   type ReconciliationItem,
@@ -50,6 +60,8 @@ export class FinanceService {
         'payment-methods',
         'transaction-types',
         'accounting-accounts',
+        'treasury-accounts',
+        'treasury-transfers',
         'transactions',
         'journal-entries',
         'reconciliations'
@@ -108,6 +120,67 @@ export class FinanceService {
     return this.repository.removeAccountingAccount(id);
   }
 
+  async listTreasuryAccounts(): Promise<TreasuryAccountDetails[]> {
+    const accounts = await this.repository.listTreasuryAccounts();
+    return Promise.all(accounts.map((account) => this.enrichTreasuryAccount(account)));
+  }
+
+  async createTreasuryAccount(input: CreateTreasuryAccountInput): Promise<TreasuryAccountDetails> {
+    if (input.accountingAccountId) {
+      await this.repository.getAccountingAccountById(input.accountingAccountId);
+    }
+
+    return this.enrichTreasuryAccount(await this.repository.createTreasuryAccount(input));
+  }
+
+  async updateTreasuryAccount(
+    id: string,
+    input: UpdateTreasuryAccountInput
+  ): Promise<TreasuryAccountDetails> {
+    if (input.accountingAccountId) {
+      await this.repository.getAccountingAccountById(input.accountingAccountId);
+    }
+
+    return this.enrichTreasuryAccount(await this.repository.updateTreasuryAccount(id, input));
+  }
+
+  removeTreasuryAccount(id: string): Promise<void> {
+    return this.repository.removeTreasuryAccount(id);
+  }
+
+  async listTreasuryTransfers(
+    input: ListTreasuryTransfersQuery
+  ): Promise<TreasuryTransferListResult> {
+    const transfers = await this.repository.listTreasuryTransfers(input);
+    const data = await Promise.all(transfers.items.map((transfer) => this.enrichTreasuryTransfer(transfer)));
+
+    return buildPaginatedResult(data, input, transfers.total);
+  }
+
+  async createTreasuryTransfer(
+    input: CreateTreasuryTransferInput
+  ): Promise<TreasuryTransferDetails> {
+    await this.assertValidTreasuryTransferAccounts(input.fromTreasuryAccountId, input.toTreasuryAccountId);
+    return this.enrichTreasuryTransfer(await this.repository.createTreasuryTransfer(input));
+  }
+
+  async updateTreasuryTransfer(
+    id: string,
+    input: UpdateTreasuryTransferInput
+  ): Promise<TreasuryTransferDetails> {
+    const existing = await this.repository.getTreasuryTransferById(id);
+    await this.assertValidTreasuryTransferAccounts(
+      input.fromTreasuryAccountId ?? existing.fromTreasuryAccountId,
+      input.toTreasuryAccountId ?? existing.toTreasuryAccountId
+    );
+
+    return this.enrichTreasuryTransfer(await this.repository.updateTreasuryTransfer(id, input));
+  }
+
+  removeTreasuryTransfer(id: string): Promise<void> {
+    return this.repository.removeTreasuryTransfer(id);
+  }
+
   async listTransactions(input: ListTransactionsQuery): Promise<FinanceTransactionListResult> {
     const transactions = await this.repository.listTransactions(input);
     const data = await Promise.all(transactions.items.map((transaction) => this.enrichTransaction(transaction)));
@@ -123,6 +196,7 @@ export class FinanceService {
     await Promise.all([
       this.repository.getTransactionTypeById(input.transactionTypeId),
       this.repository.getPaymentMethodById(input.paymentMethodId),
+      ...(input.treasuryAccountId ? [this.repository.getTreasuryAccountById(input.treasuryAccountId)] : []),
       ...(input.journalEntryId ? [this.repository.getJournalEntryById(input.journalEntryId)] : [])
     ]);
 
@@ -163,6 +237,7 @@ export class FinanceService {
     await Promise.all([
       ...(input.transactionTypeId ? [this.repository.getTransactionTypeById(input.transactionTypeId)] : []),
       ...(input.paymentMethodId ? [this.repository.getPaymentMethodById(input.paymentMethodId)] : []),
+      ...(input.treasuryAccountId ? [this.repository.getTreasuryAccountById(input.treasuryAccountId)] : []),
       ...(input.journalEntryId ? [this.repository.getJournalEntryById(input.journalEntryId)] : [])
     ]);
 
@@ -323,15 +398,34 @@ export class FinanceService {
   }
 
   private async enrichTransaction(transaction: FinanceTransaction): Promise<FinanceTransactionDetails> {
-    const [transactionType, paymentMethod] = await Promise.all([
+    const [transactionType, paymentMethod, treasuryAccount] = await Promise.all([
       this.repository.getTransactionTypeById(transaction.transactionTypeId),
-      this.repository.getPaymentMethodById(transaction.paymentMethodId)
+      this.repository.getPaymentMethodById(transaction.paymentMethodId),
+      transaction.treasuryAccountId
+        ? this.enrichTreasuryAccount(await this.repository.getTreasuryAccountById(transaction.treasuryAccountId))
+        : Promise.resolve(null)
     ]);
 
     return {
       ...transaction,
       transactionType,
-      paymentMethod
+      paymentMethod,
+      treasuryAccount
+    };
+  }
+
+  private async enrichTreasuryTransfer(
+    transfer: TreasuryTransfer
+  ): Promise<TreasuryTransferDetails> {
+    const [fromTreasuryAccount, toTreasuryAccount] = await Promise.all([
+      this.repository.getTreasuryAccountById(transfer.fromTreasuryAccountId),
+      this.repository.getTreasuryAccountById(transfer.toTreasuryAccountId)
+    ]);
+
+    return {
+      ...transfer,
+      fromTreasuryAccount,
+      toTreasuryAccount
     };
   }
 
@@ -357,5 +451,84 @@ export class FinanceService {
       account,
       items
     };
+  }
+
+  private async enrichTreasuryAccount(account: TreasuryAccount): Promise<TreasuryAccountDetails> {
+    const [accountingAccount, transactions, transfers] = await Promise.all([
+      account.accountingAccountId
+        ? this.repository.getAccountingAccountById(account.accountingAccountId)
+        : Promise.resolve(null),
+      this.repository.listTransactionsByTreasuryAccountId(account.id),
+      this.repository.listTreasuryTransfersByTreasuryAccountId(account.id)
+    ]);
+
+    let inflowTotal = 0;
+    let outflowTotal = 0;
+    let transferInTotal = 0;
+    let transferOutTotal = 0;
+
+    for (const transaction of transactions) {
+      const transactionType = await this.repository.getTransactionTypeById(transaction.transactionTypeId);
+      const direction = this.resolveTransactionDirection(transactionType.name);
+
+      if (direction === 'inflow') {
+        inflowTotal += transaction.amount;
+      } else if (direction === 'outflow') {
+        outflowTotal += transaction.amount;
+      }
+    }
+
+    for (const transfer of transfers) {
+      if (transfer.toTreasuryAccountId === account.id) {
+        transferInTotal += transfer.amount;
+      }
+
+      if (transfer.fromTreasuryAccountId === account.id) {
+        transferOutTotal += transfer.amount;
+      }
+    }
+
+    return {
+      ...account,
+      accountingAccount,
+      inflowTotal,
+      outflowTotal,
+      transferInTotal,
+      transferOutTotal,
+      currentBalance: Number(
+        (account.openingBalance + inflowTotal + transferInTotal - outflowTotal - transferOutTotal).toFixed(2)
+      ),
+      transactionCount: transactions.length,
+      transferCount: transfers.length
+    };
+  }
+
+  private async assertValidTreasuryTransferAccounts(fromId: string, toId: string) {
+    if (fromId === toId) {
+      throw new HttpError(409, 'Treasury transfer source and destination accounts must be different');
+    }
+
+    await Promise.all([
+      this.repository.getTreasuryAccountById(fromId),
+      this.repository.getTreasuryAccountById(toId)
+    ]);
+  }
+
+  private resolveTransactionDirection(name: string): 'inflow' | 'outflow' | 'neutral' {
+    const normalized = name.trim().toLowerCase();
+
+    if (['income', 'inflow', 'deposit', 'receipt', 'revenue', 'sale'].some((keyword) => normalized.includes(keyword))) {
+      return 'inflow';
+    }
+
+    if (
+      ['expense', 'outflow', 'withdrawal', 'purchase', 'payment', 'fee', 'cost'].some((keyword) =>
+        normalized.includes(keyword)
+      )
+    ) {
+      return 'outflow';
+    }
+
+    return 'neutral';
   }
 }

@@ -5,17 +5,22 @@ import {
   createAccountingAccountSchema,
   createJournalEntrySchema,
   createPaymentMethodSchema,
+  createTreasuryAccountSchema,
+  createTreasuryTransferSchema,
   createReconciliationItemSchema,
   createReconciliationSchema,
   createTransactionSchema,
   createTransactionTypeSchema,
   listJournalEntriesQuerySchema,
   listReconciliationsQuerySchema,
+  listTreasuryTransfersQuerySchema,
   listTransactionsQuerySchema,
   postJournalEntrySchema,
   updatePaymentMethodSchema,
   updateTransactionTypeSchema,
   updateAccountingAccountSchema,
+  updateTreasuryAccountSchema,
+  updateTreasuryTransferSchema,
   updateTransactionSchema
 } from './finance.schema';
 import { getFinanceModuleDocumentation } from './finance.docs';
@@ -101,6 +106,12 @@ export class FinanceController {
     });
   };
 
+  listTreasuryAccounts = async (_req: Request, res: Response) => {
+    res.status(200).json({
+      data: await this.financeService.listTreasuryAccounts()
+    });
+  };
+
   createAccountingAccount = async (req: Request, res: Response) => {
     const payload = createAccountingAccountSchema.parse(req.body);
     const account = await this.financeService.createAccountingAccount(payload);
@@ -123,6 +134,63 @@ export class FinanceController {
 
   removeAccountingAccount = async (req: Request<{ id: string }>, res: Response) => {
     await this.financeService.removeAccountingAccount(req.params.id);
+    res.status(204).send();
+  };
+
+  createTreasuryAccount = async (req: Request, res: Response) => {
+    const payload = createTreasuryAccountSchema.parse(req.body);
+    const account = await this.financeService.createTreasuryAccount(payload);
+
+    res.status(201).json({
+      message: 'Treasury account created successfully',
+      data: account
+    });
+  };
+
+  updateTreasuryAccount = async (req: Request<{ id: string }>, res: Response) => {
+    const payload = updateTreasuryAccountSchema.parse(req.body);
+    const account = await this.financeService.updateTreasuryAccount(req.params.id, payload);
+
+    res.status(200).json({
+      message: 'Treasury account updated successfully',
+      data: account
+    });
+  };
+
+  removeTreasuryAccount = async (req: Request<{ id: string }>, res: Response) => {
+    await this.financeService.removeTreasuryAccount(req.params.id);
+    res.status(204).send();
+  };
+
+  listTreasuryTransfers = async (req: Request, res: Response) => {
+    const query = listTreasuryTransfersQuerySchema.parse(req.query);
+    const result = await this.financeService.listTreasuryTransfers(query);
+
+    res.status(200).json(buildPaginatedHttpResponse(result, req.originalUrl));
+  };
+
+  createTreasuryTransfer = async (req: Request, res: Response) => {
+    const payload = createTreasuryTransferSchema.parse(req.body);
+    const transfer = await this.financeService.createTreasuryTransfer(payload);
+
+    res.status(201).json({
+      message: 'Treasury transfer created successfully',
+      data: transfer
+    });
+  };
+
+  updateTreasuryTransfer = async (req: Request<{ id: string }>, res: Response) => {
+    const payload = updateTreasuryTransferSchema.parse(req.body);
+    const transfer = await this.financeService.updateTreasuryTransfer(req.params.id, payload);
+
+    res.status(200).json({
+      message: 'Treasury transfer updated successfully',
+      data: transfer
+    });
+  };
+
+  removeTreasuryTransfer = async (req: Request<{ id: string }>, res: Response) => {
+    await this.financeService.removeTreasuryTransfer(req.params.id);
     res.status(204).send();
   };
 

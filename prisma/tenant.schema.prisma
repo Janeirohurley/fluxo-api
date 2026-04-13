@@ -157,6 +157,7 @@ model AccountingAccount {
   isActive          Boolean            @default(true) @map("is_active")
   journalEntryLines JournalEntryLine[]
   reconciliations   Reconciliation[]
+  treasuryAccounts  TreasuryAccount[]
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
 
@@ -165,12 +166,54 @@ model AccountingAccount {
   @@map("accounting_accounts")
 }
 
+model TreasuryAccount {
+  id                String            @id @default(uuid()) @db.Uuid
+  name              String            @unique
+  accountType       String            @map("account_type")
+  currency          String            @default("BIF")
+  openingBalance    Decimal           @default(0) @map("opening_balance") @db.Decimal(15, 2)
+  openingBalanceDate DateTime         @map("opening_balance_date") @db.Date
+  isActive          Boolean           @default(true) @map("is_active")
+  accountingAccountId String?         @db.Uuid @map("accounting_account_id")
+  accountingAccount AccountingAccount? @relation(fields: [accountingAccountId], references: [id], onDelete: SetNull)
+  transactions      FinanceTransaction[]
+  outgoingTransfers TreasuryTransfer[] @relation("TreasuryTransferFromAccount")
+  incomingTransfers TreasuryTransfer[] @relation("TreasuryTransferToAccount")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([accountType])
+  @@index([isActive])
+  @@index([accountingAccountId])
+  @@map("treasury_accounts")
+}
+
+model TreasuryTransfer {
+  id                   String         @id @default(uuid()) @db.Uuid
+  fromTreasuryAccountId String        @db.Uuid @map("from_treasury_account_id")
+  toTreasuryAccountId   String        @db.Uuid @map("to_treasury_account_id")
+  amount               Decimal        @db.Decimal(15, 2)
+  transferDate         DateTime       @map("transfer_date") @db.Date
+  referenceNumber      String?        @map("reference_number")
+  description          String?
+  fromTreasuryAccount  TreasuryAccount @relation("TreasuryTransferFromAccount", fields: [fromTreasuryAccountId], references: [id], onDelete: Restrict)
+  toTreasuryAccount    TreasuryAccount @relation("TreasuryTransferToAccount", fields: [toTreasuryAccountId], references: [id], onDelete: Restrict)
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  @@index([fromTreasuryAccountId])
+  @@index([toTreasuryAccountId])
+  @@index([transferDate])
+  @@map("treasury_transfers")
+}
+
 model FinanceTransaction {
   id                  String               @id @default(uuid()) @db.Uuid
   transactionTypeId   String               @db.Uuid @map("transaction_type_id")
   accountingCategory  String               @map("accounting_category")
   amount              Decimal              @db.Decimal(15, 2)
   paymentMethodId     String               @db.Uuid @map("payment_method_id")
+  treasuryAccountId   String?              @db.Uuid @map("treasury_account_id")
   referenceNumber     String?              @map("reference_number")
   transactionDate     DateTime             @map("transaction_date") @db.Date
   description         String?
@@ -180,6 +223,7 @@ model FinanceTransaction {
   journalEntryId      String?              @db.Uuid @map("journal_entry_id")
   transactionType     TransactionType      @relation(fields: [transactionTypeId], references: [id], onDelete: Restrict)
   paymentMethod       PaymentMethod        @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  treasuryAccount     TreasuryAccount?     @relation(fields: [treasuryAccountId], references: [id], onDelete: SetNull)
   asset               Asset?               @relation(fields: [assetId], references: [id], onDelete: SetNull)
   paySlip             PaySlip?             @relation(fields: [paySlipId], references: [id], onDelete: SetNull)
   journalEntry        JournalEntry?        @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
@@ -189,6 +233,7 @@ model FinanceTransaction {
 
   @@index([transactionTypeId])
   @@index([paymentMethodId])
+  @@index([treasuryAccountId])
   @@index([transactionDate])
   @@index([assetId])
   @@index([journalEntryId])
