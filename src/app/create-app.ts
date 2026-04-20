@@ -19,6 +19,7 @@ import { RequestMetricsStore } from '../shared/observability/request-metrics';
 import { prisma } from '../shared/prisma';
 import { createTenantMiddleware, TenantPrismaManager, TenantRoutingService } from '../shared/tenancy';
 import { createSubscriptionWebRouter } from '../web/subscriptions/subscription.web';
+import { i18nMiddleware } from '../shared/middleware/i18n.middleware';
 
 export function createApp() {
   const app = express();
@@ -38,15 +39,15 @@ export function createApp() {
     process.env.RATE_LIMIT_ENABLED === 'false'
       ? null
       : new InMemoryRateLimiter({
-          windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000),
-          maxRequests: Number(process.env.RATE_LIMIT_MAX_REQUESTS ?? 120)
-        });
+        windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000),
+        maxRequests: Number(process.env.RATE_LIMIT_MAX_REQUESTS ?? 120)
+      });
   const moduleDocs = modules.map(({ name, basePath, version, requiresAccessKey }) => ({
     name,
     version,
     basePath,
     requiresAccessKey,
-    ...(['assets', 'finance','employees'].includes(name) ? { docsPath: `${basePath}/docs` } : {})
+    ...(['assets', 'finance', 'employees'].includes(name) ? { docsPath: `${basePath}/docs` } : {})
   }));
   app.locals.adminPrisma = prisma;
 
@@ -58,6 +59,7 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  app.use(i18nMiddleware);
   app.use((req, _res, next) => {
     if (req.body && typeof req.body === 'object') {
       replaceRequestSection(req.body, toCamelCaseRequest(req.body));
@@ -143,10 +145,11 @@ export function createApp() {
     );
   }
 
-  app.get('/', (_req, res) => {
+  app.get('/', (req, res) => {
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
       service: 'fluxo-api',
-      message: 'Welcome to Fluxo API',
+      message: t ? t('common.welcome') : 'Welcome to Fluxo API',
       docs: {
         health: '/health',
         metrics: '/metrics',
@@ -164,7 +167,8 @@ export function createApp() {
     });
   });
 
-  app.get('/health', async (_req, res, next) => {
+  app.get('/health', async (req, res, next) => {
+    const t = (req as any).t as (key: string) => string;
     try {
       let database: {
         status: 'ok' | 'disabled' | 'error';
@@ -179,7 +183,7 @@ export function createApp() {
         } catch (error) {
           database = {
             status: 'error',
-            message: error instanceof Error ? error.message : 'Database check failed'
+            message: error instanceof Error ? error.message : t ? t('error.database_check_failed') : 'Database check failed'
           };
         }
       }
@@ -194,12 +198,12 @@ export function createApp() {
         database,
         rateLimit: rateLimiter
           ? {
-              enabled: true,
-              ...rateLimiter.snapshot()
-            }
+            enabled: true,
+            ...rateLimiter.snapshot()
+          }
           : {
-              enabled: false
-            },
+            enabled: false
+          },
         metrics: metricsStore.getSnapshot().totals,
         modules: moduleDocs
       });
@@ -224,10 +228,11 @@ export function createApp() {
     });
   });
 
-  app.get('/api/access/plans', async (_req, res, next) => {
+  app.get('/api/access/plans', async (req, res, next) => {
+    const t = (req as any).t as (key: string) => string;
     try {
       if (!accessService) {
-        throw new HttpError(503, 'Access key service is unavailable because Prisma is not configured');
+        throw new HttpError(503, t ? t('error.access_service_unavailable') : 'Access key service is unavailable because Prisma is not configured');
       }
 
       res.status(200).json({
@@ -287,14 +292,16 @@ export function createApp() {
     app.use(module.basePath, module.router);
   }
 
-  app.use((_req, _res, next) => {
-    next(new HttpError(404, 'Route not found'));
+  app.use((req, _res, next) => {
+    const t = (req as any).t as (key: string) => string;
+    next(new HttpError(404, t ? t('error.not_found') : 'Route not found'));
   });
 
-  app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+    const t = (req as any).t as (key: string) => string;
     if (error instanceof ZodError) {
       return res.status(400).json({
-        message: 'Validation failed',
+        message: t ? t('error.validation_failed') : 'Validation failed',
         requestId: res.locals.requestId ?? null,
         issues: error.flatten()
       });
@@ -318,7 +325,7 @@ export function createApp() {
     );
 
     return res.status(500).json({
-      message: 'Internal server error',
+      message: t ? t('error.internal_server_error') : 'Internal server error',
       requestId: res.locals.requestId ?? null
     });
   });

@@ -45,9 +45,9 @@ export class AssetsController {
   createAsset = async (req: Request, res: Response) => {
     const payload = createAssetSchema.parse(req.body);
     const asset = await this.assetsService.createAsset(payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Asset created successfully',
+      message: t ? t('asset_created') : 'Asset created successfully',
       data: asset
     });
   };
@@ -55,16 +55,15 @@ export class AssetsController {
   updateAsset = async (req: Request<{ id: string }>, res: Response) => {
     const payload = updateAssetSchema.parse(req.body);
     const asset = await this.assetsService.updateAsset(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Asset updated successfully',
+      message: t ? t('asset_updated') : 'Asset updated successfully',
       data: asset
     });
   };
 
   removeAsset = async (req: Request<{ id: string }>, res: Response) => {
-    await this.assetsService.removeAsset(req.params.id);
-
+    await this.assetsService.removeAsset(req.params.id, req);
     res.status(204).send();
   };
 
@@ -77,9 +76,9 @@ export class AssetsController {
   createCategory = async (req: Request, res: Response) => {
     const payload = createAssetCategorySchema.parse(req.body);
     const category = await this.assetsService.createCategory(payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Asset category created successfully',
+      message: t ? t('asset_category_created') : 'Asset category created successfully',
       data: category
     });
   };
@@ -87,16 +86,15 @@ export class AssetsController {
   updateCategory = async (req: Request<{ id: string }>, res: Response) => {
     const payload = updateAssetCategorySchema.parse(req.body);
     const category = await this.assetsService.updateCategory(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Asset category updated successfully',
+      message: t ? t('asset_category_updated') : 'Asset category updated successfully',
       data: category
     });
   };
 
   removeCategory = async (req: Request<{ id: string }>, res: Response) => {
-    await this.assetsService.removeCategory(req.params.id);
-
+    await this.assetsService.removeCategory(req.params.id, req);
     res.status(204).send();
   };
 
@@ -109,9 +107,9 @@ export class AssetsController {
   createStatus = async (req: Request, res: Response) => {
     const payload = createAssetStatusSchema.parse(req.body);
     const status = await this.assetsService.createStatus(payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Asset status created successfully',
+      message: t ? t('asset_status_created') : 'Asset status created successfully',
       data: status
     });
   };
@@ -119,16 +117,15 @@ export class AssetsController {
   updateStatus = async (req: Request<{ id: string }>, res: Response) => {
     const payload = updateAssetStatusSchema.parse(req.body);
     const status = await this.assetsService.updateStatus(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Asset status updated successfully',
+      message: t ? t('asset_status_updated') : 'Asset status updated successfully',
       data: status
     });
   };
 
   removeStatus = async (req: Request<{ id: string }>, res: Response) => {
-    await this.assetsService.removeStatus(req.params.id);
-
+    await this.assetsService.removeStatus(req.params.id, req);
     res.status(204).send();
   };
 
@@ -141,9 +138,9 @@ export class AssetsController {
   createInterventionType = async (req: Request, res: Response) => {
     const payload = createInterventionTypeSchema.parse(req.body);
     const interventionType = await this.assetsService.createInterventionType(payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Intervention type created successfully',
+      message: t ? t('intervention_type_created') : 'Intervention type created successfully',
       data: interventionType
     });
   };
@@ -151,16 +148,15 @@ export class AssetsController {
   updateInterventionType = async (req: Request<{ id: string }>, res: Response) => {
     const payload = updateInterventionTypeSchema.parse(req.body);
     const interventionType = await this.assetsService.updateInterventionType(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Intervention type updated successfully',
+      message: t ? t('intervention_type_updated') : 'Intervention type updated successfully',
       data: interventionType
     });
   };
 
   removeInterventionType = async (req: Request<{ id: string }>, res: Response) => {
-    await this.assetsService.removeInterventionType(req.params.id);
-
+    await this.assetsService.removeInterventionType(req.params.id, req);
     res.status(204).send();
   };
 
@@ -175,9 +171,9 @@ export class AssetsController {
   upsertAssetFinance = async (req: Request<{ id: string }>, res: Response) => {
     const payload = upsertAssetFinanceSchema.parse(req.body);
     const financeData = await this.assetsService.upsertAssetFinance(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Asset finance data saved successfully',
+      message: t ? t('asset_finance_saved') : 'Asset finance data saved successfully',
       data: financeData
     });
   };
@@ -193,9 +189,9 @@ export class AssetsController {
   createAssignment = async (req: Request<{ id: string }>, res: Response) => {
     const payload = createAssetAssignmentSchema.parse(req.body);
     const assignment = await this.assetsService.createAssignment(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Asset assignment created successfully',
+      message: t ? t('asset_assignment_created') : 'Asset assignment created successfully',
       data: assignment
     });
   };
@@ -210,9 +206,9 @@ export class AssetsController {
       req.params.assignmentId,
       payload
     );
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Asset assignment updated successfully',
+      message: t ? t('asset_assignment_updated') : 'Asset assignment updated successfully',
       data: assignment
     });
   };
@@ -237,9 +233,9 @@ export class AssetsController {
   createMaintenanceLog = async (req: Request<{ id: string }>, res: Response) => {
     const payload = createMaintenanceLogSchema.parse(req.body);
     const log = await this.assetsService.createMaintenanceLog(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Maintenance log created successfully',
+      message: t ? t('maintenance_log_created') : 'Maintenance log created successfully',
       data: log
     });
   };
@@ -254,9 +250,9 @@ export class AssetsController {
       req.params.maintenanceLogId,
       payload
     );
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Maintenance log updated successfully',
+      message: t ? t('maintenance_log_updated') : 'Maintenance log updated successfully',
       data: log
     });
   };

@@ -1,0 +1,52 @@
+{
+  "common": {
+    "greeting": "Hello",
+    "welcome": "Welcome to Fluxo API"
+  },
+  "asset": {
+    "created": "Asset created successfully.",
+    "updated": "Asset updated successfully.",
+    "finance_saved": "Asset finance data saved successfully.",
+    "assignment_created": "Asset assignment created successfully.",
+    "assignment_updated": "Asset assignment updated successfully.",
+    "category_created": "Asset category created successfully.",
+    "category_updated": "Asset category updated successfully.",
+    "status_created": "Asset status created successfully.",
+    "status_updated": "Asset status updated successfully."
+  },
+  "employee": {
+    "created": "Employee created successfully.",
+    "updated": "Employee updated successfully.",
+    "contract_created": "Employee contract created successfully.",
+    "contract_updated": "Employee contract updated successfully.",
+    "assignment_created": "Employee assignment created successfully.",
+    "assignment_updated": "Employee assignment updated successfully.",
+    "role_created": "Employee role created successfully.",
+    "role_updated": "Employee role updated successfully.",
+    "position_created": "Employee position created successfully.",
+    "position_updated": "Employee position updated successfully.",
+    "location_created": "Employee location created successfully.",
+    "location_updated": "Employee location updated successfully."
+  },
+  "maintenance": {
+    "log_created": "Maintenance log created successfully.",
+    "log_updated": "Maintenance log updated successfully.",
+    "intervention_type_created": "Intervention type created successfully.",
+    "intervention_type_updated": "Intervention type updated successfully."
+  },
+  "error": {
+    "internal_server_error": "Internal server error",
+    "not_found": "Resource not found",
+    "validation_failed": "Validation failed",
+    "database_check_failed": "Database check failed",
+    "access_service_unavailable": "Access key service is unavailable because Prisma is not configured",
+    "asset_not_found": "Asset not found.",
+    "asset_category_not_found": "Asset category not found.",
+    "asset_status_not_found": "Asset status not found.",
+    "intervention_type_not_found": "Intervention type not found.",
+    "asset_delete_forbidden": "Cannot delete an asset that already has finance or history records.",
+    "asset_category_delete_forbidden": "Cannot delete an asset category that is already used by assets.",
+    "asset_status_delete_forbidden": "Cannot delete an asset status that is already used by assets.",
+    "intervention_type_delete_forbidden": "Cannot delete an intervention type that is already used by maintenance logs."
+  }
+}

@@ -105,11 +105,12 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     };
   }
 
-  async getAssetById(id: string): Promise<Asset> {
+  async getAssetById(id: string, req?: any): Promise<Asset> {
     const asset = this.assets.get(id);
 
     if (!asset) {
-      throw new HttpError(404, `Asset with id "${id}" not found`);
+      const t = req?.t as (key: string) => string;
+      throw new HttpError(404, t ? t('error.asset_not_found') : `Asset with id "${id}" not found`);
     }
 
     return asset;
@@ -203,11 +204,12 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     this.categories.delete(id);
   }
 
-  async getCategoryById(id: string): Promise<AssetCategory> {
+  async getCategoryById(id: string, req?: any): Promise<AssetCategory> {
     const category = this.categories.get(id);
 
     if (!category) {
-      throw new HttpError(404, `Asset category with id "${id}" not found`);
+      const t = req?.t as (key: string) => string;
+      throw new HttpError(404, t ? t('error.asset_category_not_found') : `Asset category with id "${id}" not found`);
     }
 
     return category;
@@ -250,11 +252,12 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     this.statuses.delete(id);
   }
 
-  async getStatusById(id: string): Promise<AssetStatus> {
+  async getStatusById(id: string, req?: any): Promise<AssetStatus> {
     const status = this.statuses.get(id);
 
     if (!status) {
-      throw new HttpError(404, `Asset status with id "${id}" not found`);
+      const t = req?.t as (key: string) => string;
+      throw new HttpError(404, t ? t('error.asset_status_not_found') : `Asset status with id "${id}" not found`);
     }
 
     return status;
@@ -300,11 +303,12 @@ export class InMemoryAssetsRepository implements AssetsRepository {
     this.interventionTypes.delete(id);
   }
 
-  async getInterventionTypeById(id: string): Promise<InterventionType> {
+  async getInterventionTypeById(id: string, req?: any): Promise<InterventionType> {
     const interventionType = this.interventionTypes.get(id);
 
     if (!interventionType) {
-      throw new HttpError(404, `Intervention type with id "${id}" not found`);
+      const t = req?.t as (key: string) => string;
+      throw new HttpError(404, t ? t('error.intervention_type_not_found') : `Intervention type with id "${id}" not found`);
     }
 
     return interventionType;

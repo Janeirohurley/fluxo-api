@@ -67,7 +67,7 @@ export class AssetsService {
     return this.enrichAsset(await this.repository.updateAsset(id, input));
   }
 
-  async removeAsset(id: string): Promise<void> {
+  async removeAsset(id: string, req?: any): Promise<void> {
     const relationSummary = await this.repository.getAssetRelationSummary(id);
 
     if (
@@ -75,7 +75,8 @@ export class AssetsService {
       relationSummary.assignmentsCount > 0 ||
       relationSummary.maintenanceLogsCount > 0
     ) {
-      throw new HttpError(409, 'Cannot delete an asset that already has finance or history records', {
+      const t = req?.t as (key: string) => string;
+      throw new HttpError(409, t ? t('error.asset_delete_forbidden') : 'Cannot delete an asset that already has finance or history records', {
         relationSummary
       });
     }
@@ -95,11 +96,12 @@ export class AssetsService {
     return this.repository.updateCategory(id, input);
   }
 
-  async removeCategory(id: string): Promise<void> {
+  async removeCategory(id: string, req?: any): Promise<void> {
     const assetsCount = await this.repository.countAssetsByCategoryId(id);
 
     if (assetsCount > 0) {
-      throw new HttpError(409, 'Cannot delete an asset category that is already used by assets', {
+      const t = req?.t as (key: string) => string;
+      throw new HttpError(409, t ? t('error.asset_category_delete_forbidden') : 'Cannot delete an asset category that is already used by assets', {
         assetsCount
       });
     }
@@ -119,11 +121,12 @@ export class AssetsService {
     return this.repository.updateStatus(id, input);
   }
 
-  async removeStatus(id: string): Promise<void> {
+  async removeStatus(id: string, req?: any): Promise<void> {
     const assetsCount = await this.repository.countAssetsByStatusId(id);
 
     if (assetsCount > 0) {
-      throw new HttpError(409, 'Cannot delete an asset status that is already used by assets', {
+      const t = req?.t as (key: string) => string;
+      throw new HttpError(409, t ? t('error.asset_status_delete_forbidden') : 'Cannot delete an asset status that is already used by assets', {
         assetsCount
       });
     }
@@ -146,13 +149,14 @@ export class AssetsService {
     return this.repository.updateInterventionType(id, input);
   }
 
-  async removeInterventionType(id: string): Promise<void> {
+  async removeInterventionType(id: string, req?: any): Promise<void> {
     const maintenanceLogsCount = await this.repository.countMaintenanceLogsByInterventionTypeId(id);
 
     if (maintenanceLogsCount > 0) {
+      const t = req?.t as (key: string) => string;
       throw new HttpError(
         409,
-        'Cannot delete an intervention type that is already used by maintenance logs',
+        t ? t('error.intervention_type_delete_forbidden') : 'Cannot delete an intervention type that is already used by maintenance logs',
         {
           maintenanceLogsCount
         }

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "access_service_unavailable": "Urufunguzo rwo gushikako ntiruboneka kubera ko Prisma itatunganijwe"
+  },
+  "common": {
+    "welcome": "Ikaze kuri Fluxo API"
+  }
+}

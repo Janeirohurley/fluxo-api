@@ -1,0 +1,52 @@
+{
+  "common": {
+    "greeting": "Bonjour",
+    "welcome": "Bienvenue sur Fluxo API"
+  },
+  "asset": {
+    "created": "Actif créé avec succès.",
+    "updated": "Actif mis à jour avec succès.",
+    "finance_saved": "Données financières de l'actif enregistrées avec succès.",
+    "assignment_created": "Affectation d'actif créée avec succès.",
+    "assignment_updated": "Affectation d'actif mise à jour avec succès.",
+    "category_created": "Catégorie d'actif créée avec succès.",
+    "category_updated": "Catégorie d'actif mise à jour avec succès.",
+    "status_created": "Statut d'actif créé avec succès.",
+    "status_updated": "Statut d'actif mis à jour avec succès."
+  },
+  "employee": {
+    "created": "Employé créé avec succès.",
+    "updated": "Employé mis à jour avec succès.",
+    "contract_created": "Contrat employé créé avec succès.",
+    "contract_updated": "Contrat employé mis à jour avec succès.",
+    "assignment_created": "Affectation employé créée avec succès.",
+    "assignment_updated": "Affectation employé mise à jour avec succès.",
+    "role_created": "Rôle employé créé avec succès.",
+    "role_updated": "Rôle employé mis à jour avec succès.",
+    "position_created": "Poste employé créé avec succès.",
+    "position_updated": "Poste employé mis à jour avec succès.",
+    "location_created": "Lieu employé créé avec succès.",
+    "location_updated": "Lieu employé mis à jour avec succès."
+  },
+  "maintenance": {
+    "log_created": "Journal de maintenance créé avec succès.",
+    "log_updated": "Journal de maintenance mis à jour avec succès.",
+    "intervention_type_created": "Type d'intervention créé avec succès.",
+    "intervention_type_updated": "Type d'intervention mis à jour avec succès."
+  },
+  "error": {
+    "internal_server_error": "Erreur interne du serveur",
+    "not_found": "Ressource non trouvée",
+    "validation_failed": "Échec de la validation",
+    "database_check_failed": "Échec de la vérification de la base de données",
+    "access_service_unavailable": "Le service de clé d'accès est indisponible car Prisma n'est pas configuré",
+    "asset_not_found": "Actif introuvable.",
+    "asset_category_not_found": "Catégorie d'actif introuvable.",
+    "asset_status_not_found": "Statut d'actif introuvable.",
+    "intervention_type_not_found": "Type d'intervention introuvable.",
+    "asset_delete_forbidden": "Impossible de supprimer un actif qui possède déjà des données financières ou historiques.",
+    "asset_category_delete_forbidden": "Impossible de supprimer une catégorie d'actif déjà utilisée par des actifs.",
+    "asset_status_delete_forbidden": "Impossible de supprimer un statut d'actif déjà utilisé par des actifs.",
+    "intervention_type_delete_forbidden": "Impossible de supprimer un type d'intervention déjà utilisé par des journaux de maintenance."
+  }
+}

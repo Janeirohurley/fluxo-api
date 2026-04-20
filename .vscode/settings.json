@@ -1,2 +1,19 @@
 {
+    "i18n-ally.localesPaths": [
+        "src/i18n/"
+    ],
+    "i18n-ally.keystyle": "nested",
+    "i18n-ally.pathMatcher": "{locale}.json",
+    "i18n-ally.namespace": false,
+    "i18n-ally.enabledParsers": [
+        "json"
+    ],
+    "i18n-ally.sourceLanguage": "fr",
+    "i18n-ally.displayLanguage": "fr",
+    "i18n-ally.extract.targetOptions": [
+        "{locale}.json"
+    ],
+    "i18n-ally.include": [
+        "src/**/*"
+    ],
 }

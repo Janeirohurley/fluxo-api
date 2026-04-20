@@ -35,9 +35,9 @@ export class EmployeesController {
   createRole = async (req: Request, res: Response) => {
     const payload = createEmployeeRoleSchema.parse(req.body);
     const role = await this.employeesService.createRole(payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Employee role created successfully',
+      message: t ? t('employee_role_created') : 'Employee role created successfully',
       data: role
     });
   };
@@ -45,9 +45,9 @@ export class EmployeesController {
   updateRole = async (req: Request<{ roleId: string }>, res: Response) => {
     const payload = updateEmployeeRoleSchema.parse(req.body);
     const role = await this.employeesService.updateRole(req.params.roleId, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Employee role updated successfully',
+      message: t ? t('employee_role_updated') : 'Employee role updated successfully',
       data: role
     });
   };
@@ -66,9 +66,9 @@ export class EmployeesController {
   createPosition = async (req: Request, res: Response) => {
     const payload = createEmployeePositionSchema.parse(req.body);
     const position = await this.employeesService.createPosition(payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Employee position created successfully',
+      message: t ? t('employee_position_created') : 'Employee position created successfully',
       data: position
     });
   };
@@ -76,9 +76,9 @@ export class EmployeesController {
   updatePosition = async (req: Request<{ positionId: string }>, res: Response) => {
     const payload = updateEmployeePositionSchema.parse(req.body);
     const position = await this.employeesService.updatePosition(req.params.positionId, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Employee position updated successfully',
+      message: t ? t('employee_position_updated') : 'Employee position updated successfully',
       data: position
     });
   };
@@ -97,9 +97,9 @@ export class EmployeesController {
   createLocation = async (req: Request, res: Response) => {
     const payload = createEmployeeLocationSchema.parse(req.body);
     const location = await this.employeesService.createLocation(payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Employee location created successfully',
+      message: t ? t('employee_location_created') : 'Employee location created successfully',
       data: location
     });
   };
@@ -107,9 +107,9 @@ export class EmployeesController {
   updateLocation = async (req: Request<{ locationId: string }>, res: Response) => {
     const payload = updateEmployeeLocationSchema.parse(req.body);
     const location = await this.employeesService.updateLocation(req.params.locationId, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Employee location updated successfully',
+      message: t ? t('employee_location_updated') : 'Employee location updated successfully',
       data: location
     });
   };
@@ -137,9 +137,9 @@ export class EmployeesController {
   createEmployee = async (req: Request, res: Response) => {
     const payload = createEmployeeSchema.parse(req.body);
     const employee = await this.employeesService.createEmployee(payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Employee created successfully',
+      message: t ? t('employee_created') : 'Employee created successfully',
       data: employee
     });
   };
@@ -147,9 +147,9 @@ export class EmployeesController {
   updateEmployee = async (req: Request<{ id: string }>, res: Response) => {
     const payload = updateEmployeeSchema.parse(req.body);
     const employee = await this.employeesService.updateEmployee(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Employee updated successfully',
+      message: t ? t('employee_updated') : 'Employee updated successfully',
       data: employee
     });
   };
@@ -170,9 +170,9 @@ export class EmployeesController {
   createAssignment = async (req: Request<{ id: string }>, res: Response) => {
     const payload = createEmployeeAssignmentSchema.parse(req.body);
     const assignment = await this.employeesService.createAssignment(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Employee assignment created successfully',
+      message: t ? t('employee_assignment_created') : 'Employee assignment created successfully',
       data: assignment
     });
   };
@@ -187,9 +187,9 @@ export class EmployeesController {
       req.params.assignmentId,
       payload
     );
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Employee assignment updated successfully',
+      message: t ? t('employee_assignment_updated') : 'Employee assignment updated successfully',
       data: assignment
     });
   };
@@ -213,9 +213,9 @@ export class EmployeesController {
   createContract = async (req: Request<{ id: string }>, res: Response) => {
     const payload = createEmployeeContractSchema.parse(req.body);
     const contract = await this.employeesService.createContract(req.params.id, payload);
-
+    const t = (req as any).t as (key: string) => string;
     res.status(201).json({
-      message: 'Employee contract created successfully',
+      message: t ? t('employee_contract_created') : 'Employee contract created successfully',
       data: contract
     });
   };
@@ -230,9 +230,9 @@ export class EmployeesController {
       req.params.contractId,
       payload
     );
-
+    const t = (req as any).t as (key: string) => string;
     res.status(200).json({
-      message: 'Employee contract updated successfully',
+      message: t ? t('employee_contract_updated') : 'Employee contract updated successfully',
       data: contract
     });
   };
